@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MiMo Player — 本地音乐播放器</title>
+<title>ZDM-Player — 本地音乐播放器</title>
+<!-- 标签图标（内联 SVG 音符） -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23d4a843' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
+  /* ===== 基础变量（默认黑金主题） ===== */
   :root {
     --bg: #0a0a09;
     --surface: #141413;
@@ -23,8 +26,253 @@
     --success: #4a8c5c;
     --radius: 12px;
     --radius-sm: 8px;
+    --color-scrollbar: var(--border);
+    --color-scrollbar-hover: var(--accent);
   }
 
+  /* ===== 暗色主题（7个） ===== */
+  [data-theme="dark-green"] {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface-2: #181818;
+    --surface-3: #202820;
+    --accent: #00ff41;
+    --accent-dim: #00cc44;
+    --accent-glow: rgba(0, 255, 65, 0.15);
+    --text-primary: #b0d0b0;
+    --text-secondary: #6a8a6a;
+    --text-muted: #4a5a4a;
+    --border: #1f3f1f;
+    --danger: #cc0000;
+    --success: #00cc44;
+    --color-scrollbar: #00cc44;
+    --color-scrollbar-hover: #00ff55;
+  }
+  [data-theme="cyber"] {
+    --bg: #0B0C10;
+    --surface: #1A1A2E;
+    --surface-2: #1F1F3A;
+    --surface-3: #252545;
+    --accent: #00D2FF;
+    --accent-dim: #00AACC;
+    --accent-glow: rgba(0, 210, 255, 0.15);
+    --text-primary: #C5C6C7;
+    --text-secondary: #8888AA;
+    --text-muted: #4A4A6A;
+    --border: #2A2A4A;
+    --danger: #FF2E63;
+    --success: #00D2FF;
+    --color-scrollbar: #00D2FF;
+    --color-scrollbar-hover: #66E0FF;
+  }
+  [data-theme="titanium"] {
+    --bg: #121212;
+    --surface: #1E1E1E;
+    --surface-2: #2A2A2A;
+    --surface-3: #333333;
+    --accent: #4FC3F7;
+    --accent-dim: #2196F3;
+    --accent-glow: rgba(79, 195, 247, 0.15);
+    --text-primary: #E0E0E0;
+    --text-secondary: #999999;
+    --text-muted: #555555;
+    --border: #3A3A3A;
+    --danger: #EF5350;
+    --success: #4FC3F7;
+    --color-scrollbar: #4FC3F7;
+    --color-scrollbar-hover: #81D4FA;
+  }
+  [data-theme="amber"] {
+    --bg: #1A1A1A;
+    --surface: #262626;
+    --surface-2: #333322;
+    --surface-3: #3A3A2A;
+    --accent: #FFB000;
+    --accent-dim: #CC8800;
+    --accent-glow: rgba(255, 176, 0, 0.15);
+    --text-primary: #D4D4D4;
+    --text-secondary: #888866;
+    --text-muted: #555544;
+    --border: #4A4A2A;
+    --danger: #FF4444;
+    --success: #FFB000;
+    --color-scrollbar: #FFB000;
+    --color-scrollbar-hover: #FFD700;
+  }
+  [data-theme="deepsea"] {
+    --bg: #0A192F;
+    --surface: #112240;
+    --surface-2: #1A2D4A;
+    --surface-3: #23355A;
+    --accent: #64FFDA;
+    --accent-dim: #3AD0B0;
+    --accent-glow: rgba(100, 255, 218, 0.15);
+    --text-primary: #CCD6F6;
+    --text-secondary: #8892B0;
+    --text-muted: #4A6A8A;
+    --border: #2A4A6A;
+    --danger: #FF6B6B;
+    --success: #64FFDA;
+    --color-scrollbar: #64FFDA;
+    --color-scrollbar-hover: #9EFFE8;
+  }
+  [data-theme="dark-purple"] {
+    --bg: #110B1A;
+    --surface: #1A1228;
+    --surface-2: #2A1A3A;
+    --surface-3: #332A44;
+    --accent: #C084FC;
+    --accent-dim: #A855F7;
+    --accent-glow: rgba(192, 132, 252, 0.15);
+    --text-primary: #D4C4E8;
+    --text-secondary: #8877AA;
+    --text-muted: #4A3A5A;
+    --border: #3A2A4A;
+    --danger: #F472B6;
+    --success: #C084FC;
+    --color-scrollbar: #C084FC;
+    --color-scrollbar-hover: #D8B4FE;
+  }
+  [data-theme="dark-red"] {
+    --bg: #0F0F0F;
+    --surface: #1A0F0F;
+    --surface-2: #2A1414;
+    --surface-3: #3A1A1A;
+    --accent: #FF4500;
+    --accent-dim: #CC3300;
+    --accent-glow: rgba(255, 69, 0, 0.15);
+    --text-primary: #E0C0C0;
+    --text-secondary: #997777;
+    --text-muted: #4A2A2A;
+    --border: #4A1A1A;
+    --danger: #FF6B35;
+    --success: #FF4500;
+    --color-scrollbar: #FF4500;
+    --color-scrollbar-hover: #FF6B35;
+  }
+
+  /* ===== 亮色主题（7个） ===== */
+  [data-theme="light-white"] {
+    --bg: #FFFFFF;
+    --surface: #F8F9FA;
+    --surface-2: #F0F0F0;
+    --surface-3: #E8E8E8;
+    --accent: #333333;
+    --accent-dim: #555555;
+    --accent-glow: rgba(0,0,0,0.05);
+    --text-primary: #333333;
+    --text-secondary: #777777;
+    --text-muted: #AAAAAA;
+    --border: #D0D0D0;
+    --danger: #D93025;
+    --success: #1A73E8;
+    --color-scrollbar: #888888;
+    --color-scrollbar-hover: #555555;
+  }
+  [data-theme="light-mint"] {
+    --bg: #F0FDF4;
+    --surface: #DCFCE7;
+    --surface-2: #C8E6C9;
+    --surface-3: #A7D0B0;
+    --accent: #10B981;
+    --accent-dim: #059669;
+    --accent-glow: rgba(16, 185, 129, 0.15);
+    --text-primary: #1A3A2A;
+    --text-secondary: #5A7A6A;
+    --text-muted: #8AA89A;
+    --border: #A7D0B0;
+    --danger: #D93025;
+    --success: #10B981;
+    --color-scrollbar: #10B981;
+    --color-scrollbar-hover: #059669;
+  }
+  [data-theme="light-milk"] {
+    --bg: #FEFCF3;
+    --surface: #FAF6ED;
+    --surface-2: #F0E8D8;
+    --surface-3: #E8DDCC;
+    --accent: #D4A373;
+    --accent-dim: #B8895A;
+    --accent-glow: rgba(212, 163, 115, 0.15);
+    --text-primary: #3A3228;
+    --text-secondary: #7A6A5A;
+    --text-muted: #B0A090;
+    --border: #D4C5A9;
+    --danger: #D93025;
+    --success: #D4A373;
+    --color-scrollbar: #D4A373;
+    --color-scrollbar-hover: #B8895A;
+  }
+  [data-theme="light-sky"] {
+    --bg: #F0F9FF;
+    --surface: #E0F2FE;
+    --surface-2: #D0E8F5;
+    --surface-3: #B0D0E0;
+    --accent: #0284C7;
+    --accent-dim: #0369A1;
+    --accent-glow: rgba(2, 132, 199, 0.15);
+    --text-primary: #0A2A3A;
+    --text-secondary: #4A6A7A;
+    --text-muted: #8AA8B8;
+    --border: #7AB8D0;
+    --danger: #D93025;
+    --success: #0284C7;
+    --color-scrollbar: #0284C7;
+    --color-scrollbar-hover: #0369A1;
+  }
+  [data-theme="light-sakura"] {
+    --bg: #FFF5F6;
+    --surface: #FFE8EA;
+    --surface-2: #F5D8E0;
+    --surface-3: #F0D0D8;
+    --accent: #F43F5E;
+    --accent-dim: #E11D48;
+    --accent-glow: rgba(244, 63, 94, 0.15);
+    --text-primary: #3A1A2A;
+    --text-secondary: #7A5A6A;
+    --text-muted: #B08A92;
+    --border: #E8B0B8;
+    --danger: #D93025;
+    --success: #F43F5E;
+    --color-scrollbar: #F43F5E;
+    --color-scrollbar-hover: #E11D48;
+  }
+  [data-theme="light-silver"] {
+    --bg: #F8F9FA;
+    --surface: #F1F3F5;
+    --surface-2: #E9ECEF;
+    --surface-3: #E4E7EC;
+    --accent: #475569;
+    --accent-dim: #334155;
+    --accent-glow: rgba(0,0,0,0.05);
+    --text-primary: #1A202C;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --border: #D0D5DD;
+    --danger: #D93025;
+    --success: #1A73E8;
+    --color-scrollbar: #94A3B8;
+    --color-scrollbar-hover: #64748B;
+  }
+  [data-theme="light-orange"] {
+    --bg: #FFF7ED;
+    --surface: #FFEDD5;
+    --surface-2: #F5E0C0;
+    --surface-3: #F0D0B0;
+    --accent: #EA580C;
+    --accent-dim: #C2410C;
+    --accent-glow: rgba(234, 88, 12, 0.15);
+    --text-primary: #2A1A0A;
+    --text-secondary: #6A4A2A;
+    --text-muted: #B09070;
+    --border: #E8B88A;
+    --danger: #D93025;
+    --success: #EA580C;
+    --color-scrollbar: #EA580C;
+    --color-scrollbar-hover: #C2410C;
+  }
+
+  /* ===== 全局重置 ===== */
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -36,6 +284,7 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    transition: background 0.3s, color 0.3s;
   }
 
   body::before {
@@ -43,10 +292,11 @@
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse at 15% 20%, rgba(212, 168, 67, 0.04) 0%, transparent 50%),
-      radial-gradient(ellipse at 85% 80%, rgba(212, 168, 67, 0.02) 0%, transparent 40%);
+      radial-gradient(ellipse at 15% 20%, var(--accent-glow) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 80%, var(--accent-glow) 0%, transparent 40%);
     pointer-events: none;
     z-index: 0;
+    transition: background 0.3s;
   }
 
   body::after {
@@ -68,6 +318,7 @@
     position: relative;
     z-index: 2;
     flex-shrink: 0;
+    transition: border-color 0.3s;
   }
 
   .logo {
@@ -84,13 +335,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
+    box-shadow: 0 0 20px var(--accent-glow);
+    transition: background 0.3s, box-shadow 0.3s;
   }
 
   .logo-icon svg {
     width: 18px;
     height: 18px;
     fill: var(--bg);
+    transition: fill 0.3s;
   }
 
   .logo-text {
@@ -98,16 +351,18 @@
     font-size: 22px;
     color: var(--text-primary);
     letter-spacing: 0.02em;
+    transition: color 0.3s;
   }
 
   .logo-text span {
     color: var(--accent);
+    transition: color 0.3s;
   }
 
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
   }
 
   .clock {
@@ -119,6 +374,7 @@
     border-right: 1px solid var(--border);
     min-width: 80px;
     text-align: center;
+    transition: color 0.3s, border-color 0.3s;
   }
 
   .btn {
@@ -150,6 +406,91 @@
     fill: currentColor;
   }
 
+  /* 主题控制组 */
+  .theme-controls {
+    display: flex;
+    gap: 4px;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+    transition: border-color 0.3s;
+  }
+
+  .theme-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .theme-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .theme-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .theme-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .theme-dropdown .dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    min-width: 140px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 100;
+    padding: 4px 0;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  .theme-dropdown .dropdown-content.show {
+    display: block;
+  }
+
+  .theme-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-family: inherit;
+  }
+  .theme-dropdown .dropdown-item:hover {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .theme-dropdown .dropdown-item .color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
   /* ── Main Layout ── */
   .main {
     flex: 1;
@@ -166,6 +507,7 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    transition: border-color 0.3s;
   }
 
   .sidebar-header {
@@ -174,6 +516,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    transition: border-color 0.3s;
   }
 
   .sidebar-title {
@@ -182,12 +525,14 @@
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-muted);
+    transition: color 0.3s;
   }
 
   .track-count {
     font-family: 'DM Mono', monospace;
     font-size: 11px;
     color: var(--text-muted);
+    transition: color 0.3s;
   }
 
   .playlist {
@@ -198,7 +543,8 @@
 
   .playlist::-webkit-scrollbar { width: 4px; }
   .playlist::-webkit-scrollbar-track { background: transparent; }
-  .playlist::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .playlist::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 2px; }
+  .playlist::-webkit-scrollbar-thumb:hover { background: var(--color-scrollbar-hover); }
 
   .track-item {
     display: flex;
@@ -217,7 +563,7 @@
 
   .track-item.active {
     background: var(--accent-glow);
-    border: 1px solid rgba(212, 168, 67, 0.15);
+    border: 1px solid var(--accent);
   }
 
   .track-item.active .track-name {
@@ -231,6 +577,7 @@
     width: 24px;
     text-align: center;
     flex-shrink: 0;
+    transition: color 0.3s;
   }
 
   .track-item.active .track-number {
@@ -278,6 +625,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin-bottom: 2px;
+    transition: color 0.3s;
   }
 
   .track-meta {
@@ -287,6 +635,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 0.3s;
   }
 
   .track-duration {
@@ -294,6 +643,7 @@
     font-size: 11px;
     color: var(--text-muted);
     flex-shrink: 0;
+    transition: color 0.3s;
   }
 
   /* ── Drop Zone ── */
@@ -343,6 +693,7 @@
     font-size: 15px;
     color: var(--text-secondary);
     margin-bottom: 8px;
+    transition: color 0.3s;
   }
 
   .drop-hint {
@@ -350,6 +701,7 @@
     font-size: 11px;
     color: var(--text-muted);
     letter-spacing: 0.03em;
+    transition: color 0.3s;
   }
 
   /* ── Center Stage ── */
@@ -357,20 +709,48 @@
     flex: 1;
     display: none;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    padding: 40px;
-    gap: 32px;
+    padding: 20px 40px;
+    gap: 20px;
   }
 
   .center-stage.visible {
     display: flex;
   }
 
-  /* Visualizer */
+  .main-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    min-height: 0;
+  }
+
+  .left-panel {
+    flex: 0 0 auto;
+    width: 280px;             /* 固定宽度，防止被长歌名撑大 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    overflow: hidden;         /* 防止内部溢出 */
+  }
+
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    max-width: 600px;
+  }
+
+  /* 视觉化包裹 */
   .visualizer-wrap {
-    width: 320px;
-    height: 320px;
+    width: 200px;
+    height: 200px;
     position: relative;
     display: flex;
     align-items: center;
@@ -378,8 +758,8 @@
   }
 
   .vinyl {
-    width: 280px;
-    height: 280px;
+    width: 160px;
+    height: 160px;
     border-radius: 50%;
     background:
       radial-gradient(circle at center, var(--bg) 18%, transparent 19%),
@@ -395,6 +775,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.3s, box-shadow 0.3s;
   }
 
   .vinyl.playing {
@@ -407,43 +788,44 @@
   }
 
   .vinyl-label {
-    width: 100px;
-    height: 100px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), #8b6914);
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+    transition: background 0.3s;
   }
 
   .vinyl-label svg {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     fill: rgba(0,0,0,0.4);
   }
 
   .visualizer-canvas {
     position: absolute;
-    inset: -20px;
+    inset: -15px;
     pointer-events: none;
   }
 
-  /* Now Playing Info */
+  /* 歌曲信息 */
   .now-playing-info {
     text-align: center;
-    max-width: 400px;
   }
 
   .now-playing-title {
     font-family: 'Instrument Serif', serif;
-    font-size: 26px;
+    font-size: 22px;
     color: var(--text-primary);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 500px;
+    max-width: 280px;
+    transition: color 0.3s;
   }
 
   .now-playing-artist {
@@ -451,29 +833,34 @@
     font-size: 13px;
     color: var(--text-secondary);
     letter-spacing: 0.04em;
+    transition: color 0.3s;
   }
 
-  /* ── Lyrics ── */
+  /* 歌词区域 */
   .lyrics-section {
-    max-height: 180px;
+    max-height: 100%;
     overflow-y: auto;
-    width: 100%;
-    max-width: 500px;
-    text-align: center;
+    padding: 8px 12px;
     scroll-behavior: smooth;
-    padding: 8px 0;
+    max-height: 300px;
+    border-left: 1px solid var(--border);
+    padding-left: 24px;
+    transition: border-color 0.3s;
   }
+
   .lyrics-section::-webkit-scrollbar { width: 3px; }
   .lyrics-section::-webkit-scrollbar-track { background: transparent; }
-  .lyrics-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .lyrics-section::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 2px; }
+  .lyrics-section::-webkit-scrollbar-thumb:hover { background: var(--color-scrollbar-hover); }
 
   .lyrics-line {
     transition: color 0.2s ease, font-weight 0.2s ease;
-    padding: 2px 0;
+    padding: 3px 0;
     font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.8;
+    text-align: left;
   }
   .lyrics-line.active {
     color: var(--accent);
@@ -483,7 +870,8 @@
   /* Progress */
   .progress-section {
     width: 100%;
-    max-width: 500px;
+    max-width: 700px;
+    margin: 0 auto;
   }
 
   .progress-bar-wrap {
@@ -494,6 +882,7 @@
     cursor: pointer;
     position: relative;
     margin-bottom: 8px;
+    transition: background 0.3s;
   }
 
   .progress-bar-wrap:hover {
@@ -509,7 +898,7 @@
     background: linear-gradient(90deg, var(--accent-dim), var(--accent));
     border-radius: 3px;
     position: relative;
-    transition: width 0.1s linear;
+    transition: width 0.1s linear, background 0.3s;
     max-width: 100%;
   }
 
@@ -522,9 +911,9 @@
     height: 12px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 8px rgba(212, 168, 67, 0.4);
+    box-shadow: 0 0 8px var(--accent-glow);
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, background 0.3s, box-shadow 0.3s;
   }
 
   .progress-times {
@@ -533,13 +922,16 @@
     font-family: 'DM Mono', monospace;
     font-size: 11px;
     color: var(--text-muted);
+    transition: color 0.3s;
   }
 
   /* Controls */
   .controls {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 24px;
+    margin: 0 auto;
   }
 
   .ctrl-btn {
@@ -591,12 +983,12 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 20px rgba(212, 168, 67, 0.3);
+    box-shadow: 0 4px 20px var(--accent-glow);
   }
 
   .play-btn:hover {
     transform: scale(1.08);
-    box-shadow: 0 4px 30px rgba(212, 168, 67, 0.5);
+    box-shadow: 0 4px 30px var(--accent-glow);
   }
 
   .play-btn:active {
@@ -607,6 +999,7 @@
     width: 22px;
     height: 22px;
     fill: var(--bg);
+    transition: fill 0.3s;
   }
 
   /* Volume */
@@ -614,6 +1007,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: 20px;
   }
 
   .volume-section svg {
@@ -630,12 +1024,13 @@
   .volume-slider {
     -webkit-appearance: none;
     appearance: none;
-    width: 100px;
+    width: 80px;
     height: 4px;
     background: var(--surface-3);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
+    transition: background 0.3s;
   }
 
   .volume-slider::-webkit-slider-thumb {
@@ -645,7 +1040,8 @@
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
-    box-shadow: 0 0 6px rgba(212, 168, 67, 0.3);
+    box-shadow: 0 0 6px var(--accent-glow);
+    transition: background 0.3s, box-shadow 0.3s;
   }
 
   .volume-val {
@@ -654,6 +1050,7 @@
     color: var(--text-muted);
     width: 30px;
     text-align: right;
+    transition: color 0.3s;
   }
 
   /* ── Bottom Bar ── */
@@ -666,6 +1063,7 @@
     flex-shrink: 0;
     position: relative;
     z-index: 2;
+    transition: border-color 0.3s;
   }
 
   .bottom-left {
@@ -695,9 +1093,10 @@
     border: 1px solid var(--border);
     padding: 2px 8px;
     border-radius: 4px;
+    transition: color 0.3s, border-color 0.3s;
   }
 
-  /* ── Empty State for Playlist ── */
+  /* ── Empty State ── */
   .playlist-empty {
     flex: 1;
     display: flex;
@@ -712,6 +1111,7 @@
     font-size: 12px;
     color: var(--text-muted);
     line-height: 1.8;
+    transition: color 0.3s;
   }
 
   /* ── Animations ── */
@@ -734,19 +1134,28 @@
   /* ── Responsive ── */
   @media (max-width: 900px) {
     .sidebar { width: 280px; }
-    .visualizer-wrap { width: 240px; height: 240px; }
-    .vinyl { width: 200px; height: 200px; }
-    .vinyl-label { width: 72px; height: 72px; }
+    .main-area { gap: 20px; }
+    .visualizer-wrap { width: 160px; height: 160px; }
+    .vinyl { width: 130px; height: 130px; }
+    .vinyl-label { width: 56px; height: 56px; }
+    .now-playing-title { font-size: 18px; max-width: 200px; }
+    .lyrics-section { max-height: 200px; padding-left: 16px; }
   }
 
   @media (max-width: 700px) {
     .main { flex-direction: column; }
     .sidebar { width: 100%; height: 40%; border-right: none; border-bottom: 1px solid var(--border); }
-    .center-stage { padding: 20px; gap: 20px; }
-    .visualizer-wrap { width: 180px; height: 180px; }
-    .vinyl { width: 160px; height: 160px; }
-    .vinyl-label { width: 56px; height: 56px; }
-    .now-playing-title { font-size: 20px; }
+    .center-stage { padding: 16px; }
+    .main-area { flex-direction: column; gap: 16px; }
+    .left-panel { flex-direction: row; gap: 20px; }
+    .visualizer-wrap { width: 120px; height: 120px; }
+    .vinyl { width: 100px; height: 100px; }
+    .vinyl-label { width: 44px; height: 44px; }
+    .now-playing-title { font-size: 16px; max-width: 150px; }
+    .right-panel { max-width: 100%; width: 100%; }
+    .lyrics-section { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 12px; max-height: 120px; }
+    .controls { flex-wrap: wrap; gap: 12px; }
+    .volume-section { margin-left: 0; }
   }
 </style>
 </head>
@@ -758,7 +1167,7 @@
     <div class="logo-icon">
       <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
     </div>
-    <div class="logo-text">MiMo <span>Player</span></div>
+    <div class="logo-text">ZDM <span>Player</span></div>
   </div>
   <div class="header-actions">
     <div class="clock" id="clock">----.--.--  --:--:--</div>
@@ -770,6 +1179,14 @@
       <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       添加文件
     </button>
+    <div class="theme-controls">
+      <button class="theme-btn" id="defaultThemeBtn" title="默认主题（黑金）">🏠</button>
+      <button class="theme-btn" id="themeToggleBtn" title="切换亮暗">🌓</button>
+      <div class="theme-dropdown">
+        <button class="theme-btn" id="themeSelectBtn" title="选择配色主题">🎨</button>
+        <div class="dropdown-content" id="themeDropdown"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -797,23 +1214,27 @@
 
   <!-- Center Stage -->
   <div class="center-stage" id="centerStage">
-    <div class="visualizer-wrap fade-up fade-up-d1">
-      <div class="vinyl" id="vinyl">
-        <div class="vinyl-label">
-          <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+    <div class="main-area fade-up">
+      <div class="left-panel">
+        <div class="visualizer-wrap">
+          <div class="vinyl" id="vinyl">
+            <div class="vinyl-label">
+              <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+          </div>
+          <canvas class="visualizer-canvas" id="visualizerCanvas"></canvas>
+        </div>
+        <div class="now-playing-info">
+          <div class="now-playing-title" id="nowPlayingTitle">—</div>
+          <div class="now-playing-artist" id="nowPlayingArtist">未知艺术家</div>
         </div>
       </div>
-      <canvas class="visualizer-canvas" id="visualizerCanvas"></canvas>
-    </div>
 
-    <div class="now-playing-info fade-up fade-up-d2">
-      <div class="now-playing-title" id="nowPlayingTitle">—</div>
-      <div class="now-playing-artist" id="nowPlayingArtist">未知艺术家</div>
-    </div>
-
-    <!-- 歌词区域 -->
-    <div class="lyrics-section fade-up fade-up-d2" id="lyricsSection" style="display:none;">
-      <div id="lyricsContainer"></div>
+      <div class="right-panel">
+        <div class="lyrics-section" id="lyricsSection" style="display:none;">
+          <div id="lyricsContainer"></div>
+        </div>
+      </div>
     </div>
 
     <div class="progress-section fade-up fade-up-d3">
@@ -844,12 +1265,11 @@
       <button class="ctrl-btn" id="repeatBtn" title="循环模式">
         <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
       </button>
-    </div>
-
-    <div class="volume-section fade-up fade-up-d3">
-      <svg viewBox="0 0 24 24" id="volumeIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-      <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80">
-      <span class="volume-val" id="volumeVal">80%</span>
+      <div class="volume-section">
+        <svg viewBox="0 0 24 24" id="volumeIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80">
+        <span class="volume-val" id="volumeVal">80%</span>
+      </div>
     </div>
   </div>
 </div>
@@ -861,7 +1281,7 @@
   </div>
   <div class="bottom-center"></div>
   <div class="bottom-right">
-    <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);">MiMo Player v1.0</span>
+    <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);">ZDM-Player v2.0</span>
   </div>
 </div>
 
@@ -869,6 +1289,130 @@
 
 <script>
 (() => {
+  // ===== 主题系统 =====
+  const DARK_THEMES = [
+    { id: 'dark-green', name: '黑绿极客', dot: '#00ff41' },
+    { id: 'cyber', name: '赛博霓虹', dot: '#00D2FF' },
+    { id: 'titanium', name: '工业钛金', dot: '#4FC3F7' },
+    { id: 'amber', name: '琥珀终端', dot: '#FFB000' },
+    { id: 'deepsea', name: '深海极客', dot: '#64FFDA' },
+    { id: 'dark-purple', name: '暗夜紫晶', dot: '#C084FC' },
+    { id: 'dark-red', name: '碳纤赤焰', dot: '#FF4500' }
+  ];
+  const LIGHT_THEMES = [
+    { id: 'light-white', name: '纯净日白', dot: '#333333' },
+    { id: 'light-mint', name: '清凉薄荷', dot: '#10B981' },
+    { id: 'light-milk', name: '温润奶茶', dot: '#D4A373' },
+    { id: 'light-sky', name: '天空蓝调', dot: '#0284C7' },
+    { id: 'light-sakura', name: '樱花物语', dot: '#F43F5E' },
+    { id: 'light-silver', name: '高级银灰', dot: '#475569' },
+    { id: 'light-orange', name: '活力橙光', dot: '#EA580C' }
+  ];
+
+  let isDarkMode = true;
+  let currentTheme = localStorage.getItem('mimo_theme') || 'default';
+
+  function getActiveThemes() {
+    return isDarkMode ? DARK_THEMES : LIGHT_THEMES;
+  }
+
+  // 应用主题（修复版）
+  function applyTheme(themeId) {
+    if (themeId === 'default') {
+      // 回到黑金：移除 data-theme，强制暗色
+      document.documentElement.removeAttribute('data-theme');
+      isDarkMode = true;
+      localStorage.setItem('mimo_darkmode', 'true');
+      localStorage.setItem('mimo_theme', 'default');
+      // 清除下拉菜单高亮
+      document.querySelectorAll('#themeDropdown .dropdown-item').forEach(el => {
+        el.classList.remove('selected');
+      });
+      currentTheme = 'default';
+      return;
+    }
+    const allThemes = [...DARK_THEMES, ...LIGHT_THEMES];
+    const theme = allThemes.find(t => t.id === themeId);
+    if (!theme) return;
+    document.documentElement.setAttribute('data-theme', themeId);
+    localStorage.setItem('mimo_theme', themeId);
+    currentTheme = themeId;
+    document.querySelectorAll('#themeDropdown .dropdown-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.theme === themeId);
+    });
+  }
+
+  // 切换亮暗
+  function toggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    localStorage.setItem('mimo_darkmode', isDarkMode ? 'true' : 'false');
+    // 如果当前是默认黑金，切亮暗时直接切换到 dark-green（因为黑金没有亮色版）
+    if (currentTheme === 'default') {
+      applyTheme('dark-green');
+    } else {
+      // 否则保持当前主题，但重新应用（会更新主题列表）
+      const activeIds = getActiveThemes().map(t => t.id);
+      if (!activeIds.includes(currentTheme)) {
+        currentTheme = activeIds[0];
+      }
+      applyTheme(currentTheme);
+    }
+  }
+
+  // 渲染主题下拉菜单
+  function renderThemeDropdown() {
+    const themes = getActiveThemes();
+    const container = document.getElementById('themeDropdown');
+    container.innerHTML = themes.map(t =>
+      `<button class="dropdown-item" data-theme="${t.id}">
+        <span class="color-dot" style="background:${t.dot};"></span>
+        ${t.name}
+      </button>`
+    ).join('');
+    container.querySelectorAll('.dropdown-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tid = el.dataset.theme;
+        if (tid) {
+          applyTheme(tid);
+          document.getElementById('themeDropdown').classList.remove('show');
+        }
+      });
+    });
+    // 高亮当前
+    container.querySelectorAll('.dropdown-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.theme === currentTheme);
+    });
+  }
+
+  // 初始化主题
+  function initTheme() {
+    const savedTheme = localStorage.getItem('mimo_theme');
+    const savedDark = localStorage.getItem('mimo_darkmode');
+    isDarkMode = savedDark !== 'false';
+    if (savedTheme && savedTheme !== 'default') {
+      applyTheme(savedTheme);
+    } else {
+      applyTheme('default');
+    }
+    renderThemeDropdown();
+  }
+
+  // ===== DOM 事件绑定 =====
+  document.getElementById('defaultThemeBtn').addEventListener('click', () => applyTheme('default'));
+  document.getElementById('themeToggleBtn').addEventListener('click', toggleDarkMode);
+  document.getElementById('themeSelectBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('themeDropdown').classList.toggle('show');
+  });
+  document.addEventListener('click', () => {
+    document.getElementById('themeDropdown').classList.remove('show');
+  });
+
+  // 启动主题
+  initTheme();
+
+  // ===== 播放器核心 =====
   // ── State ──
   const state = {
     tracks: [],
@@ -877,7 +1421,9 @@
     shuffle: false,
     repeat: 0,
     volume: 0.8,
-    lyrics: null,          // 存储当前歌词 { lines: [{time, text}] }
+    lyrics: null,
+    userScrolledLyrics: false,
+    lyricsScrollTimer: null,
   };
 
   // ── Audio setup ──
@@ -900,7 +1446,7 @@
     visualizerInitialized = true;
   }
 
-  // ── DOM ──
+  // ── DOM 引用 ──
   const $ = id => document.getElementById(id);
   const dropZone = $('dropZone');
   const playlistEl = $('playlist');
@@ -930,10 +1476,14 @@
   const ctx = canvas.getContext('2d');
   const lyricsContainer = $('lyricsContainer');
   const lyricsSection = $('lyricsSection');
+  const folderBtn = $('folderBtn');
+  const clock = $('clock');
 
   // ── File Handling ──
   addFilesBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  fileInput.addEventListener('change', async (e) => {
+    await handleFiles(e.target.files);
+  });
 
   document.body.addEventListener('dragover', e => {
     e.preventDefault();
@@ -946,39 +1496,49 @@
     }
   });
 
-  document.body.addEventListener('drop', e => {
+  document.body.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragging');
-    handleFiles(e.dataTransfer.files);
+    await handleFiles(e.dataTransfer.files);
   });
 
-  function handleFiles(files) {
-    // 处理 .lrc 文件（如果单独拖入）
+  async function handleFiles(files) {
+    // 分离音频和歌词
     const lrcFiles = [...files].filter(f => f.name.toLowerCase().endsWith('.lrc'));
-    if (lrcFiles.length) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target.result;
-        parseLRC(content);
-      };
-      reader.readAsText(lrcFiles[0]);
-      // 如果有歌词文件，我们继续处理音频，但不影响
-    }
-
     const audioFiles = [...files].filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|wma)$/i.test(f.name));
     if (!audioFiles.length) return;
 
+    // 读取所有歌词内容到数组
+    const lrcData = [];
+    for (const lrcFile of lrcFiles) {
+      const baseName = lrcFile.name.replace(/\.lrc$/i, '').toLowerCase();
+      try {
+        const text = await lrcFile.text();  // 使用 File 的 text() 方法
+        lrcData.push({ name: baseName, content: text });
+      } catch {}
+    }
+
+    // 处理音频文件并匹配歌词
     audioFiles.forEach(file => {
       const url = URL.createObjectURL(file);
       const name = file.name.replace(/\.[^/.]+$/, '');
       let title = name, artist = '未知艺术家';
       const match = name.match(/^(.+?)\s*[-–—]\s*(.+)$/);
       if (match) {
-        artist = match[1].trim();
-        title = match[2].trim();
+        artist = match[2].trim();
+        title = match[1].trim();
       }
       const ext = file.name.split('.').pop().toUpperCase();
-      state.tracks.push({ url, title, artist, ext, file, lrc: null });
+
+      // 按完整文件名匹配，失败则用歌曲名模糊匹配
+      let matched = lrcData.find(l => l.name === name.toLowerCase());
+      if (!matched) {
+        const songTitle = title.toLowerCase();
+        matched = lrcData.find(l => l.name.includes(songTitle));
+      }
+      const lrcContent = matched ? matched.content : null;
+
+      state.tracks.push({ url, title, artist, ext, file, lrc: lrcContent });
     });
 
     renderPlaylist();
@@ -1023,23 +1583,22 @@
   function loadTrack(index) {
     if (index < 0 || index >= state.tracks.length) return;
 
-    // 释放上一个 blob URL
-    if (audio.src && audio.src.startsWith('blob:')) {
-      URL.revokeObjectURL(audio.src);
-    }
+    // 暂停当前播放
+    audio.pause();
 
     state.currentIndex = index;
     const track = state.tracks[index];
-    audio.src = track.url;
+  
+    // 每次切歌重新生成 URL，避免之前释放导致失效
+    const newUrl = URL.createObjectURL(track.file);
+    audio.src = newUrl;
     audio.load();
 
-    // 大号显示歌曲名，小号显示艺术家
     nowPlayingTitle.textContent = track.title;
     nowPlayingArtist.textContent = track.artist;
     formatBadge.textContent = track.ext;
     formatBadge.style.display = 'inline-block';
 
-    // 加载歌词（如果存在）
     if (track.lrc) {
       parseLRC(track.lrc);
     } else {
@@ -1050,12 +1609,28 @@
 
     centerStage.classList.add('visible');
     renderPlaylist();
+
+    if (state.isPlaying) {
+      setTimeout(() => {
+        audio.play().catch(() => {
+          audio.addEventListener('canplay', function handler() {
+            audio.removeEventListener('canplay', handler);
+            if (state.isPlaying) audio.play();
+          });
+        });
+      }, 50);
+    }
   }
 
   function play() {
     initAudioContext();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    audio.play();
+    audio.play().catch(() => {
+      audio.addEventListener('canplay', function handler() {
+        audio.removeEventListener('canplay', handler);
+        audio.play();
+      });
+    });
     state.isPlaying = true;
     vinyl.classList.add('playing');
     updatePlayIcon();
@@ -1082,16 +1657,20 @@
 
   function playNext() {
     if (state.tracks.length === 0) return;
+
+    // 单曲循环：重新加载当前歌曲
     if (state.repeat === 2) {
-      audio.currentTime = 0;
+      loadTrack(state.currentIndex);
       play();
       return;
     }
+
     let next;
     if (state.shuffle) {
       next = Math.floor(Math.random() * state.tracks.length);
     } else {
       next = (state.currentIndex + 1) % state.tracks.length;
+      // 如果到达末尾且不循环，停止播放
       if (next === 0 && state.repeat === 0) {
         pause();
         return;
@@ -1103,38 +1682,94 @@
 
   function playPrev() {
     if (state.tracks.length === 0) return;
+
+    // 单曲循环：直接重新加载当前歌
+    if (state.repeat === 2) {
+      loadTrack(state.currentIndex);
+      play();
+      return;
+    }
+
+    // 如果当前播放时间大于 3 秒，归零（这是原来的快速回退功能）
     if (audio.currentTime > 3) {
       audio.currentTime = 0;
       return;
     }
+
     let prev;
     if (state.shuffle) {
       prev = Math.floor(Math.random() * state.tracks.length);
     } else {
-      prev = (state.currentIndex - 1 + state.tracks.length) % state.tracks.length;
+      // 全部循环模式下，如果当前是第一首，跳到最后一首
+      if (state.repeat === 1 && state.currentIndex === 0) {
+        prev = state.tracks.length - 1;
+      } else {
+        prev = (state.currentIndex - 1 + state.tracks.length) % state.tracks.length;
+      }
     }
     loadTrack(prev);
     play();
   }
 
-  // ── LRC 解析与渲染 ──
+  // ── LRC ──
   function parseLRC(text) {
     const lines = text.split('\n');
     const parsed = [];
-    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2})\](.*)/;
-    for (let line of lines) {
-      const match = line.match(timeRegex);
-      if (match) {
-        const minutes = parseInt(match[1], 10);
-        const seconds = parseInt(match[2], 10);
-        const centiseconds = parseInt(match[3], 10);
-        const time = minutes * 60 + seconds + centiseconds / 100;
-        const text = match[4].trim();
+
+    // 定义多种时间格式的正则
+    const formats = [
+      // 格式1: [mm:ss.cc] 或 [mm:ss.c] 或 [mm:ss.ccc]（百分秒/毫秒）
+      { regex: /\[(\d{2}):(\d{2})\.(\d{1,3})\](.*)/, type: 'ms' },
+      // 格式2: [mm:ss] 只有分钟秒
+      { regex: /\[(\d{2}):(\d{2})\](.*)/, type: 'ss' },
+      // 格式3: [hh:mm:ss] 小时分钟秒
+      { regex: /\[(\d{2}):(\d{2}):(\d{2})\](.*)/, type: 'hms' },
+      // 格式4: 更宽泛的数字:数字.数字（允许数字位数不固定）
+      { regex: /\[(\d+):(\d+)\.(\d+)\](.*)/, type: 'ms' },
+      // 格式5: 更宽泛的数字:数字（允许数字位数不固定）
+      { regex: /\[(\d+):(\d+)\](.*)/, type: 'ss' },
+    ];
+
+    for (const line of lines) {
+      for (const fmt of formats) {
+        const match = line.match(fmt.regex);
+        if (!match) continue;
+
+        let time = 0;
+        let text = '';
+
+        if (fmt.type === 'ms') {
+          // [mm:ss.cc] 或 [mm:ss.c] 或 [mm:ss.ccc]
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseInt(match[2], 10);
+          const centi = parseInt(match[3], 10);
+          // 如果是三位数，按毫秒处理，否则按百分秒
+          const denominator = match[3].length >= 3 ? 1000 : 100;
+          time = minutes * 60 + seconds + centi / denominator;
+          text = match[4] ? match[4].trim() : '';
+        } else if (fmt.type === 'ss') {
+          // [mm:ss]
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseInt(match[2], 10);
+          time = minutes * 60 + seconds;
+          text = match[3] ? match[3].trim() : '';
+        } else if (fmt.type === 'hms') {
+          // [hh:mm:ss]
+          const hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const seconds = parseInt(match[3], 10);
+          time = hours * 3600 + minutes * 60 + seconds;
+          text = match[4] ? match[4].trim() : '';
+        }
+
         if (text) {
           parsed.push({ time, text });
         }
+        break; // 匹配到一个格式就跳出内层循环
       }
     }
+
+    // 按时间排序
     parsed.sort((a, b) => a.time - b.time);
     state.lyrics = { lines: parsed };
     displayLyrics();
@@ -1150,6 +1785,11 @@
     lyricsContainer.innerHTML = state.lyrics.lines.map((line, i) =>
       `<div class="lyrics-line" data-index="${i}">${line.text}</div>`
     ).join('');
+    state.userScrolledLyrics = false;
+    if (state.lyricsScrollTimer) {
+      clearTimeout(state.lyricsScrollTimer);
+      state.lyricsScrollTimer = null;
+    }
     updateLyrics(0);
   }
 
@@ -1167,13 +1807,29 @@
     items.forEach((el, idx) => {
       el.classList.toggle('active', idx === activeIndex);
     });
-    if (activeIndex >= 0) {
+
+    if (!state.userScrolledLyrics && activeIndex >= 0) {
       const activeEl = items[activeIndex];
       if (activeEl) {
         activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }
     }
   }
+
+  lyricsSection.addEventListener('scroll', () => {
+    if (lyricsSection.style.display === 'none') return;
+    state.userScrolledLyrics = true;
+    if (state.lyricsScrollTimer) {
+      clearTimeout(state.lyricsScrollTimer);
+    }
+    state.lyricsScrollTimer = setTimeout(() => {
+      state.userScrolledLyrics = false;
+      state.lyricsScrollTimer = null;
+      if (state.isPlaying && audio.duration) {
+        updateLyrics(audio.currentTime);
+      }
+    }, 5000);
+  });
 
   // ── Events ──
   playBtn.addEventListener('click', togglePlay);
@@ -1203,7 +1859,6 @@
     progressFilled.style.width = pct + '%';
     currentTimeEl.textContent = formatTime(audio.currentTime);
     totalTimeEl.textContent = formatTime(audio.duration);
-    // 歌词同步
     updateLyrics(audio.currentTime);
   });
 
@@ -1310,12 +1965,13 @@
     const { audioFiles, lrcFiles } = await scanFolderRecursive(handle);
     if (!audioFiles.length) return;
 
-    const lyricsMap = {};
+    // 读取所有歌词内容到数组（避免全局映射覆盖）
+    const lrcData = [];
     for (const lrcFile of lrcFiles) {
       const baseName = lrcFile.name.replace(/\.lrc$/i, '').toLowerCase();
       try {
         const text = await lrcFile.text();
-        lyricsMap[baseName] = text;
+        lrcData.push({ name: baseName, content: text });
       } catch {}
     }
 
@@ -1329,7 +1985,16 @@
         title = match[1].trim();
       }
       const ext = file.name.split('.').pop().toUpperCase();
-      const lrcContent = lyricsMap[name.toLowerCase()] || null;
+
+      // 独立匹配歌词（先精确匹配，失败则用歌曲名模糊匹配）
+      let matched = lrcData.find(l => l.name === name.toLowerCase());
+      if (!matched) {
+        // 用歌曲名（title）去匹配，只要歌词文件名包含该歌曲名即可
+        const songTitle = title.toLowerCase();
+        matched = lrcData.find(l => l.name.includes(songTitle));
+      }
+      const lrcContent = matched ? matched.content : null;
+
       state.tracks.push({ url, title, artist, ext, file, lrc: lrcContent });
     });
 
@@ -1344,7 +2009,6 @@
     folderBtn.style.color = 'var(--success)';
   }
 
-  const folderBtn = $('folderBtn');
   let savedHandle = null;
 
   async function pickFolder() {
@@ -1416,14 +2080,14 @@
 
     const cx = w / 2;
     const cy = h / 2;
-    const radius = 130;
-    const bars = 64;
+    const radius = 80;
+    const bars = 48;
     const step = Math.floor(bufferLength / bars);
 
     for (let i = 0; i < bars; i++) {
       const val = dataArray[i * step] / 255;
       const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-      const barH = 8 + val * 50;
+      const barH = 6 + val * 40;
 
       const x1 = cx + Math.cos(angle) * radius;
       const y1 = cy + Math.sin(angle) * radius;
@@ -1441,7 +2105,6 @@
   }
 
   // ── Clock ──
-  const clock = $('clock');
   function updateClock() {
     const now = new Date();
     const y = now.getFullYear();
