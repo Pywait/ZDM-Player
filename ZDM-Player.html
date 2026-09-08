@@ -1310,53 +1310,63 @@
   ];
 
   let isDarkMode = true;
-  let currentTheme = localStorage.getItem('mimo_theme') || 'default';
+  let currentTheme = localStorage.getItem('zdm_theme') || 'default';
 
   function getActiveThemes() {
     return isDarkMode ? DARK_THEMES : LIGHT_THEMES;
   }
 
-  // 应用主题（修复版）
+  // 应用主题
   function applyTheme(themeId) {
+    // 黑金主题（特殊处理）
     if (themeId === 'default') {
-      // 回到黑金：移除 data-theme，强制暗色
       document.documentElement.removeAttribute('data-theme');
       isDarkMode = true;
-      localStorage.setItem('mimo_darkmode', 'true');
-      localStorage.setItem('mimo_theme', 'default');
+      localStorage.setItem('zdm_darkmode', 'true');
+      localStorage.setItem('zdm_theme', 'default');
+      currentTheme = 'default';
       // 清除下拉菜单高亮
       document.querySelectorAll('#themeDropdown .dropdown-item').forEach(el => {
         el.classList.remove('selected');
       });
-      currentTheme = 'default';
+      renderThemeDropdown();
       return;
     }
+
+    // 普通主题
     const allThemes = [...DARK_THEMES, ...LIGHT_THEMES];
     const theme = allThemes.find(t => t.id === themeId);
-    if (!theme) return;
+    if (!theme) {
+      console.warn('主题不存在:', themeId);
+      return;
+    }
+
     document.documentElement.setAttribute('data-theme', themeId);
-    localStorage.setItem('mimo_theme', themeId);
+    localStorage.setItem('zdm_theme', themeId);
     currentTheme = themeId;
+    // 高亮当前主题
     document.querySelectorAll('#themeDropdown .dropdown-item').forEach(el => {
       el.classList.toggle('selected', el.dataset.theme === themeId);
     });
+    renderThemeDropdown();
   }
 
   // 切换亮暗
   function toggleDarkMode() {
+    // 切换亮暗
     isDarkMode = !isDarkMode;
-    localStorage.setItem('mimo_darkmode', isDarkMode ? 'true' : 'false');
-    // 如果当前是默认黑金，切亮暗时直接切换到 dark-green（因为黑金没有亮色版）
-    if (currentTheme === 'default') {
-      applyTheme('dark-green');
-    } else {
-      // 否则保持当前主题，但重新应用（会更新主题列表）
-      const activeIds = getActiveThemes().map(t => t.id);
-      if (!activeIds.includes(currentTheme)) {
-        currentTheme = activeIds[0];
-      }
-      applyTheme(currentTheme);
+    localStorage.setItem('zdm_darkmode', isDarkMode ? 'true' : 'false');
+
+    // 获取当前模式下的第一个主题
+    const activeThemes = getActiveThemes();
+    if (!activeThemes || activeThemes.length === 0) {
+      console.warn('没有可用的主题');
+      return;
     }
+    const firstThemeId = activeThemes[0].id;
+
+    // 应用该主题（自动更新菜单）
+    applyTheme(firstThemeId);
   }
 
   // 渲染主题下拉菜单
@@ -1387,8 +1397,8 @@
 
   // 初始化主题
   function initTheme() {
-    const savedTheme = localStorage.getItem('mimo_theme');
-    const savedDark = localStorage.getItem('mimo_darkmode');
+    const savedTheme = localStorage.getItem('zdm_theme');
+    const savedDark = localStorage.getItem('zdm_darkmode');
     isDarkMode = savedDark !== 'false';
     if (savedTheme && savedTheme !== 'default') {
       applyTheme(savedTheme);
