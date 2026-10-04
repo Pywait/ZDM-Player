@@ -1,0 +1,183 @@
+// ==UserScript==
+// @name         主动入口守门员 v0.6
+// @namespace    http://tampermonkey.net/
+// @version      0.6
+// @description  左上角小标签 + 意图遮罩 + 暂停/恢复播放控制（教学注释版）
+// @match        *://*.douyin.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict'; // 开启严格模式，让代码写得更规范，防止出现隐晦的错误。
+
+    // ==========================================
+    // 第一道防线：防重复执行锁
+    // 原理：抖音是单页应用，URL 变化会触发脚本重跑。如果跑过了，就直接 return 结束，防止弹出两次。
+    // ==========================================
+    if (window.hasGatekeeperRun) return;
+    window.hasGatekeeperRun = true; // 在内存里做个标记，证明“守门员已经来过”。
+
+    // ==========================================
+    // 模块一：左上角常驻小标签
+    // 作用：给你自己看的一个状态指示器，证明脚本正在运行。
+    // ==========================================
+    function insertTag() {
+        // 如果页面上已经有这个标签了，就不重复创建
+        if (document.getElementById('gatekeeper-tag')) return;
+
+        // 1. 在内存里凭空创建一个 div 元素（相当于捏了一个空方块）
+        const tag = document.createElement('div');
+        tag.id = 'gatekeeper-tag'; // 给它贴上身份证，方便以后查找
+        tag.textContent = '守门员在线 (v0.6)'; // 往方块里塞文字
+
+        // 2. 给方块穿衣服（设置 CSS 样式）
+        tag.style.cssText = `
+            position: fixed;       /* 固定定位，不管页面怎么滚动，它都钉在屏幕上 */
+            top: 0px;              /* 距顶部 0px */
+            left: 0px;             /* 距左边 0px（所以是左上角） */
+            z-index: 2147483647;   /* 图层拉到最高，保证盖住一切，连遮罩都盖不住它 */
+            background: rgb(0, 245, 212); /* 薄荷绿背景色 */
+            font-size: 18px;       /* 字体大小 18px */
+            color: black;          /* 文字黑色 */
+            padding: 12px 12px;    /* 内边距，让文字不贴着边缘 */
+            border-radius: 6px;    /* 圆角，看起来柔和一点 */
+            font-weight: bold;     /* 字体加粗 */
+            font-family: sans-serif; /* 使用无衬线字体（微软雅黑等） */
+            box-shadow: rgb(0, 245, 212, 0.66) 4px 4px 10px; /* 带颜色的阴影，增加立体感 */
+        `;
+
+        // 3. 把造好的方块，塞进网页的“身体”里（body），这样才能显示在屏幕上
+        document.body.appendChild(tag);
+    }
+
+    // ==========================================
+    // 模块二：女仆意图遮罩面板（核心交互）
+    // 作用：盖住整个屏幕，暂停视频，让你先做选择。
+    // ==========================================
+    function initGatekeeper() {
+        // 如果页面上已经有遮罩了，就不重复创建
+        if (document.getElementById('gatekeeper-wrapper')) return;
+
+        // 1. 创建最外层的“全屏遮罩”
+        const wrapper = document.createElement('div');
+        wrapper.id = 'gatekeeper-wrapper';
+        wrapper.style.cssText = `
+            position: fixed;          /* 固定定位，直接贴在整个浏览器窗口上 */
+            top: 0; left: 0;          /* 从左上角开始 */
+            width: 100vw; height: 100vh; /* 宽度和高度占满整个视口（屏幕） */
+            background: rgba(0, 0, 0, 0.7); /* 70% 透明度的黑底，压暗抖音 */
+            z-index: 2147483646;      /* 仅次于小标签，高于抖音所有内容 */
+            display: flex;            /* 弹性布局，用来居中里面的面板 */
+            align-items: center;      /* 垂直居中 */
+            justify-content: center;  /* 水平居中 */
+            backdrop-filter: blur(5px); /* 给背后的网页加一层“毛玻璃”效果，减淡诱惑力 */
+        `;
+
+        // 2. 创建中间的“女仆面板”主体
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: #1a1a1a;      /* 深灰底色，显得高级 */
+            color: #00f5d4;           /* 薄荷绿文字 */
+            padding: 40px;            /* 内边距宽敞一点，不局促 */
+            border-radius: 16px;      /* 大圆角，像卡片 */
+            box-shadow: 0 10px 30px rgba(0, 245, 212, 0.3); /* 发光阴影 */
+            text-align: center;       /* 文字居中 */
+            font-family: sans-serif;  /* 无衬线字体 */
+            max-width: 400px;         /* 最大宽度，防止在宽屏上太宽 */
+        `;
+
+        // 3. 女仆文案（支持换行和微小字体样式）
+        const text = document.createElement('h2');
+        // 这里用了 innerHTML，因为里面嵌套了 <br> 和 <span> 来调整样式
+        text.innerHTML = '主人，您回来啦~<br><span style="font-size:16px;color:#ccc;font-weight:normal;display:block;margin-top:10px;">今天是想认真看点东西，还是让奴家陪您探索未知？<br>或者……就摆烂一小会儿也行哦。</span>';
+
+        // 4. 按钮容器（用来装那三个按钮，方便控制它们的水平排列）
+        const btnBox = document.createElement('div');
+        btnBox.style.cssText = 'display: flex; gap: 10px; justify-content: center; margin-top: 30px;';
+
+        // 5. 定义三个意图按钮的数据（用数组存起来，方便遍历循环）
+        const buttons = [
+            { text: '认真看', color: '#00f5d4', hover: '#00d2b8' },
+            { text: '去探索', color: '#f5a623', hover: '#d18e1e' },
+            { text: '摆烂刷', color: '#ff4d4d', hover: '#cc3d3d' }
+        ];
+
+        // 遍历这个数组，为每一个数据生成一个真实的按钮
+        buttons.forEach(item => {
+            const btn = document.createElement('button');
+            btn.textContent = item.text;
+
+            // 设置按钮的 CSS 样式
+            btn.style.cssText = `
+                padding: 10px 20px;
+                border: none;               /* 去掉默认边框 */
+                border-radius: 8px;         /* 圆角 */
+                background: ${item.color};  /* 这里用反引号和 ${} 读取上面数组里的颜色 */
+                color: #000;                /* 按钮文字黑色 */
+                font-weight: bold;
+                cursor: pointer;            /* 鼠标悬停变小手 */
+                font-size: 16px;
+                transition: 0.2s;           /* 鼠标悬停时颜色平滑过渡 */
+            `;
+
+            // 鼠标移入移出时的变色效果
+            btn.onmouseover = () => btn.style.background = item.hover;
+            btn.onmouseout = () => btn.style.background = item.color;
+
+            // 点击按钮后的核心逻辑
+            btn.onclick = () => {
+                console.log(`用户选择了：${item.text}`); // 在控制台打一行字，方便调试
+
+                wrapper.remove(); // 把整个遮罩从网页里删除，露出抖音
+
+                // 恢复视频播放（因为我们之前在弹出时把它们暂停了）
+                const videos = document.querySelectorAll('video');
+                videos.forEach(video => {
+                    // 调用视频的 play() 方法继续播放。
+                    // 注意：浏览器可能不让你自动播放，所以用 .catch() 捕获错误，防止代码卡死。
+                    video.play().catch(e => console.log('浏览器拦截了自动播放，需用户手动点击'));
+                });
+            };
+
+            // 把按钮塞进按钮容器里
+            btnBox.appendChild(btn);
+        });
+
+        // 6. 组装并挂载：女仆文案 + 按钮 -> 面板 -> 全屏遮罩 -> 网页 body
+        panel.appendChild(text);
+        panel.appendChild(btnBox);
+        wrapper.appendChild(panel);
+        document.body.appendChild(wrapper);
+        console.log('✅ 女仆面板已挂载！');
+
+        // ==========================================
+        // 7. 【v0.6 新增功能】静音魔法：遮罩弹出后，强制暂停所有视频
+        // 作用：解决“不见其人先闻其声”的瑕疵，把安静还给用户。
+        // ==========================================
+        const videos = document.querySelectorAll('video'); // 查找页面上所有的 video 标签
+        videos.forEach(video => {
+            video.pause(); // 一个一个暂停
+        });
+        console.log(`⏸️ 已暂停 ${videos.length} 个视频`);
+    }
+
+    // ==========================================
+    // 启动执行
+    // 作用：决定脚本什么时候开始干活。
+    // ==========================================
+    function startGatekeeper() {
+        // 1. 先点亮左上角的小标签
+        insertTag();
+
+        // 2. 稍微等 1.5 秒再弹遮罩（因为抖音页面加载快，我们需要等它先渲染出来）
+        setTimeout(initGatekeeper, 1500);
+    }
+
+    // 判断页面加载状态，如果还在加载中，就等加载完再执行；否则直接执行
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startGatekeeper);
+    } else {
+        startGatekeeper();
+    }
+
+})();
