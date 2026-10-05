@@ -1,0 +1,671 @@
+// ==UserScript==
+// @name         主动入口守门员 v0.8
+// @namespace    http://tampermonkey.net/
+// @version      0.8
+// @description  按钮各司其职 + 本地存储 + 探索配额限制 + 摆烂刷倒计时（宽恕+强制修复）
+// @match        *://*.douyin.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // 记录暂停视频的定时器
+    // 作用：当遮罩面板存在时，持续检查页面中的 video，并强制暂停，防止用户在未选择前偷偷播放。
+    let pauseInterval = null;
+
+    // 【v0.8 新增】记录监听视频切换的定时器
+    // 作用：用于“去探索”模式中，每 500ms 检查当前视频 ID 是否变化，从而扣减探索配额。
+    let exploreInterval = null;
+
+    // 【v0.8 新增】记录上一个视频的 ID，用来判断是否切换了视频
+    // 作用：避免同一个视频因为反复查询而被重复扣减探索次数。
+    let lastVideoId = null;
+
+    // 【v0.8 新增】记录摆烂刷倒计时的定时器
+    // 作用：每秒更新摆烂刷剩余时间，并在时间结束后清理状态、重新初始化守门员面板。
+    let bingeInterval = null;
+
+    // 【v0.8 新增】记录摆烂刷心跳的定时器
+    // 作用：每 5 秒写入一次最后活跃时间，用于判断用户是否离开页面超过 2 分钟。
+    let heartbeatInterval = null;
+
+    // ==========================================
+    // 模块一：左上角的小标签
+    // ==========================================
+    // 功能：在页面左上角插入“守门员在线”标签，用于提示脚本已经运行。
+    // 特点：使用 fixed 定位和极高的 z-index，保证不被抖音页面元素遮挡。
+    function insertTag() {
+        // 如果已经存在标签，则直接返回，避免重复插入。
+        if (document.getElementById('gatekeeper-tag')) return;
+
+        // 创建标签元素。
+        const tag = document.createElement('div');
+        tag.id = 'gatekeeper-tag';
+        tag.textContent = '守门员在线 (v0.8)';
+
+        // 设置标签样式：固定在左上角，青色背景，黑色文字，带阴影。
+        tag.style.cssText = `
+            position: fixed; top: 0px; left: 0px;
+            z-index: 2147483647; background: rgb(0, 245, 212);
+            font-size: 18px; color: black; padding: 12px 12px;
+            border-radius: 6px; font-weight: bold; font-family: sans-serif;
+            box-shadow: rgb(0, 245, 212, 0.66) 4px 4px 10px;
+        `;
+
+        // 将标签挂载到 body 上。
+        document.body.appendChild(tag);
+    }
+
+    // ==========================================
+    // 【v0.8 新增模块】本地存储记录器
+    // ==========================================
+    // 功能：把用户每次点击按钮的意图写入 localStorage。
+    // 数据格式：数组，每个元素包含 action 和 time。
+    function recordAction(actionText) {
+        // 【v0.8 修改】键名增加 0_ 前缀，让它在本地存储列表中排序置顶
+        // 说明：浏览器开发者工具中 localStorage 通常按 key 排序，0_ 前缀可以让记录更容易被看到。
+        const STORAGE_KEY = '0_gatekeeper_logs';
+
+        // 获取当前本地时间字符串，方便后续查看操作时间。
+        const now = new Date().toLocaleString();
+
+        // 从 localStorage 读取历史日志；如果没有，则初始化为空数组。
+        let logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+        // 追加本次操作记录。
+        logs.push({
+            action: actionText,
+            time: now
+        });
+
+        // 写回 localStorage。
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+
+        // 控制台输出本次记录，便于调试。
+        console.log(`📝 已记录：您在 ${now} 选择了 [${actionText}]`);
+
+        // 控制台输出当前所有历史记录，便于观察数据结构。
+        console.log('📚 当前所有的历史记录（长这样）：', logs);
+    }
+
+    // ==========================================
+    // 【v0.8 新增模块】探索配额计数器
+    // ==========================================
+    // 功能：在页面顶部显示“探索剩余：N 条”。
+    // 说明：如果计数器不存在则创建；如果已存在则只更新文字。
+    function updateCounter(remaining) {
+        // 尝试获取已有的计数器元素。
+        let counter = document.getElementById('gatekeeper-counter');
+
+        // 如果计数器不存在，则创建并设置样式。
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.id = 'gatekeeper-counter';
+
+            // 【v0.8 修改】位置改为 top: 0px; left: 200px;
+            // 说明：放到左上角标签右侧，避免遮挡原标签。
+            counter.style.cssText = `
+                position: fixed; top: 0px; left: 200px;
+                z-index: 2147483646; background: #f5a623;
+                font-size: 16px; color: black; padding: 8px 12px;
+                border-radius: 6px; font-weight: bold; font-family: sans-serif;
+                box-shadow: rgba(245, 166, 35, 0.66) 4px 4px 10px;
+            `;
+
+            // 挂载到 body。
+            document.body.appendChild(counter);
+        }
+
+        // 更新计数器文字，显示剩余探索条数。
+        counter.textContent = `探索剩余：${remaining} 条`;
+    }
+
+    // 功能：移除探索配额计数器。
+    // 使用场景：探索配额用尽、进入摆烂刷、或重新初始化面板时。
+    function removeCounter() {
+        const counter = document.getElementById('gatekeeper-counter');
+        if (counter) counter.remove();
+    }
+
+    // ==========================================
+    // 【v0.8 新增模块】摆烂刷倒计时器
+    // ==========================================
+    // 功能：显示摆烂刷剩余时间，格式为“摆烂倒计时：X分Y秒”。
+    // 说明：如果倒计时标签不存在则创建；如果存在则更新文字。
+    function updateBingeCountdown(secondsRemaining) {
+        // 尝试获取已有倒计时标签。
+        let countdownTag = document.getElementById('gatekeeper-binge-countdown');
+
+        // 如果不存在，则创建并设置红色警示样式。
+        if (!countdownTag) {
+            countdownTag = document.createElement('div');
+            countdownTag.id = 'gatekeeper-binge-countdown';
+
+            // 【v0.8 修改】位置改为 top: 0px; left: 200px;
+            // 说明：与探索计数器位置一致，避免遮挡左上角主标签。
+            countdownTag.style.cssText = `
+                position: fixed; top: 0px; left: 200px;
+                z-index: 2147483646; background: #ff4d4d;
+                font-size: 16px; color: white; padding: 8px 12px;
+                border-radius: 6px; font-weight: bold; font-family: sans-serif;
+                box-shadow: rgba(255, 77, 77, 0.66) 4px 4px 10px;
+            `;
+
+            // 挂载到 body。
+            document.body.appendChild(countdownTag);
+        }
+
+        // 计算分钟和秒数。
+        const mins = Math.floor(secondsRemaining / 60);
+        const secs = secondsRemaining % 60;
+
+        // 更新倒计时文字。
+        countdownTag.textContent = `摆烂倒计时：${mins}分${secs}秒`;
+    }
+
+    // 功能：移除摆烂刷倒计时标签。
+    // 使用场景：倒计时结束、宽恕清理、强制清理。
+    function removeBingeCountdown() {
+        const countdownTag = document.getElementById('gatekeeper-binge-countdown');
+        if (countdownTag) countdownTag.remove();
+    }
+
+    // ==========================================
+    // 【v0.8 新增模块】摆烂刷生命周期管理
+    // ==========================================
+    // 功能：启动一次摆烂刷会话。
+    // 参数：durationMs 表示本次摆烂持续多少毫秒，例如 20 * 60 * 1000。
+    // 核心：
+    // 1. 把结束时间写入 localStorage，防止刷新页面后倒计时重置。
+    // 2. 启动心跳，每 5 秒记录一次活跃时间。
+    // 3. 启动倒计时定时器，每秒更新 UI；到期后清理状态并重新初始化面板。
+    function startBingeSession(durationMs) {
+        // 【v0.8 修改】键名增加 0_ 前缀
+        // 计算本次摆烂的结束时间戳。
+        const endTime = Date.now() + durationMs;
+
+        // 持久化结束时间，防止用户刷新页面作弊。
+        localStorage.setItem('0_gatekeeper_binge_end_time', endTime.toString());
+
+        // 持久化最后活跃时间，初始为当前时间。
+        localStorage.setItem('0_gatekeeper_binge_last_active', Date.now().toString());
+
+        // 如果已有心跳定时器，先清理，避免重复。
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+        // 启动心跳：每 5 秒更新一次最后活跃时间。
+        heartbeatInterval = setInterval(() => {
+            localStorage.setItem('0_gatekeeper_binge_last_active', Date.now().toString());
+        }, 5000);
+
+        // 如果已有倒计时定时器，先清理，避免重复。
+        if (bingeInterval) clearInterval(bingeInterval);
+
+        // 启动倒计时：每秒检查剩余时间。
+        bingeInterval = setInterval(() => {
+            // 计算剩余毫秒数。
+            const remainingMs = endTime - Date.now();
+
+            // 如果剩余时间小于等于 0，说明摆烂结束。
+            if (remainingMs <= 0) {
+                // 清理倒计时定时器。
+                clearInterval(bingeInterval);
+                bingeInterval = null;
+
+                // 清理心跳定时器。
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+
+                // 【v0.8 修改】键名增加 0_ 前缀
+                // 移除摆烂结束时间。
+                localStorage.removeItem('0_gatekeeper_binge_end_time');
+
+                // 移除最后活跃时间。
+                localStorage.removeItem('0_gatekeeper_binge_last_active');
+
+                // 移除倒计时 UI。
+                removeBingeCountdown();
+
+                // 重新初始化守门员面板，让用户重新选择。
+                initGatekeeper();
+            } else {
+                // 如果还没结束，则更新倒计时 UI。
+                updateBingeCountdown(Math.floor(remainingMs / 1000));
+            }
+        }, 1000);
+    }
+
+    // 功能：清理摆烂刷会话。
+    // 参数：isForgiven 表示是否因为“宽恕机制”而清理。
+    // 宽恕机制：用户离开超过 2 分钟，视为中断摆烂，退还当天摆烂额度。
+    function clearBingeSession(isForgiven) {
+        // 清理倒计时定时器。
+        if (bingeInterval) { clearInterval(bingeInterval); bingeInterval = null; }
+
+        // 清理心跳定时器。
+        if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+
+        // 【v0.8 修改】键名增加 0_ 前缀
+        // 移除摆烂结束时间。
+        localStorage.removeItem('0_gatekeeper_binge_end_time');
+
+        // 移除最后活跃时间。
+        localStorage.removeItem('0_gatekeeper_binge_last_active');
+
+        // 移除倒计时 UI。
+        removeBingeCountdown();
+
+        // 如果是宽恕清理，则退还今天的摆烂额度。
+        if (isForgiven) {
+            // 【v0.8 修改】键名增加 0_ 前缀
+            // 移除“今天已摆烂”的日期标记，使用户可以再次选择摆烂刷。
+            localStorage.removeItem('0_gatekeeper_binge_date');
+
+            // 控制台提示宽恕已触发。
+            console.log('🎁 宽恕触发：已退还今天的摆烂额度');
+        }
+    }
+
+    // ==========================================
+    // 模块二：女仆意图遮罩面板
+    // ==========================================
+    // 功能：创建全屏遮罩和面板，让用户在“认真看 / 去探索 / 摆烂刷”之间做选择。
+    // 核心：
+    // 1. 遮罩期间持续暂停视频。
+    // 2. 根据按钮执行不同逻辑。
+    // 3. 使用 localStorage 持久化状态。
+    function initGatekeeper() {
+        // 如果遮罩已经存在，则直接返回，避免重复创建。
+        if (document.getElementById('gatekeeper-wrapper')) return;
+
+        // 创建全屏遮罩容器。
+        const wrapper = document.createElement('div');
+        wrapper.id = 'gatekeeper-wrapper';
+
+        // 设置遮罩样式：固定全屏、半透明黑底、模糊背景、居中内容。
+        wrapper.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); z-index: 2147483646;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        `;
+
+        // 创建面板容器。
+        const panel = document.createElement('div');
+
+        // 设置面板样式：深色背景、青色文字、圆角、阴影、居中文本。
+        panel.style.cssText = `
+            background: #1a1a1a; color: #00f5d4; padding: 40px;
+            border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 245, 212, 0.3);
+            text-align: center; font-family: sans-serif; max-width: 400px;
+        `;
+
+        // 创建标题和说明文字。
+        const text = document.createElement('h2');
+
+        // 使用 innerHTML 插入多行提示，保持女仆风格文案。
+        text.innerHTML = '主人，您回来啦~<br><span style="font-size:16px;color:#ccc;font-weight:normal;display:block;margin-top:10px;">今天是想认真看点东西，还是让奴家陪您探索未知？<br>或者……就摆烂一小会儿也行哦。</span>';
+
+        // 创建按钮容器。
+        const btnBox = document.createElement('div');
+
+        // 设置按钮容器为横向 flex，居中，带间距。
+        btnBox.style.cssText = 'display: flex; gap: 10px; justify-content: center; margin-top: 30px;';
+
+        // 定义三个按钮的文案、主色和悬停色。
+        const buttons = [
+            { text: '认真看', color: '#00f5d4', hover: '#00d2b8' },
+            { text: '去探索', color: '#f5a623', hover: '#d18e1e' },
+            { text: '摆烂刷', color: '#ff4d4d', hover: '#cc3d3d' }
+        ];
+
+        // 遍历按钮配置，逐个创建按钮并绑定事件。
+        buttons.forEach(item => {
+            // 创建按钮元素。
+            const btn = document.createElement('button');
+            btn.textContent = item.text;
+
+            // 设置按钮基础样式。
+            btn.style.cssText = `
+                padding: 10px 20px; border: none; border-radius: 8px;
+                background: ${item.color}; color: #000; font-weight: bold;
+                cursor: pointer; font-size: 16px; transition: 0.2s;
+            `;
+
+            // 鼠标悬停时切换背景色。
+            btn.onmouseover = () => btn.style.background = item.hover;
+
+            // 鼠标移出时恢复背景色。
+            btn.onmouseout = () => btn.style.background = item.color;
+
+            // 绑定点击事件：这是整个脚本的核心分流入口。
+            btn.onclick = () => {
+                // 控制台记录用户选择。
+                console.log(`用户选择了：${item.text}`);
+
+                // 记录本次操作到 localStorage。
+                recordAction(item.text);
+
+                // 如果暂停视频的定时器存在，先清理。
+                // 因为用户已经做出选择，接下来可能允许播放视频。
+                if (pauseInterval) {
+                    clearInterval(pauseInterval);
+                    pauseInterval = null;
+                }
+
+                // 【v0.8 核心新增】针对“认真看”进行特殊处理：两步跳转到“稍后再看”
+                // 逻辑：
+                // 1. 找到文字为“我的”的 span。
+                // 2. 找到它最近的 a 标签并点击，进入个人页。
+                // 3. 等待 1 秒后，点击 #semiTabwatch_later，进入“稍后再看”。
+                // 4. 移除遮罩并尝试播放视频。
+                if (item.text === '认真看') {
+                    // 获取页面中所有 span 元素并转为数组。
+                    const mySpans = Array.from(document.querySelectorAll('span'));
+
+                    // 查找文本内容严格等于“我的”的 span。
+                    const myButton = mySpans.find(span => span.textContent.trim() === '我的');
+
+                    // 如果找到了“我的”按钮。
+                    if (myButton) {
+                        // 找到它最近的 a 标签，因为真正可点击跳转的是链接。
+                        const linkElement = myButton.closest('a');
+
+                        // 如果找到了链接元素。
+                        if (linkElement) {
+                            // 模拟点击“我的”链接。
+                            linkElement.click();
+
+                            // 等待 1 秒，让页面完成跳转或渲染。
+                            setTimeout(() => {
+                                // 查找“稍后再看”标签。
+                                const watchLaterTab = document.querySelector('#semiTabwatch_later');
+
+                                // 如果找到，则点击进入“稍后再看”。
+                                if (watchLaterTab) {
+                                    watchLaterTab.click();
+                                }
+
+                                // 移除遮罩面板。
+                                wrapper.remove();
+
+                                // 尝试播放页面中的视频。
+                                const videos = document.querySelectorAll('video');
+                                videos.forEach(video => {
+                                    video.play().catch(e => {});
+                                });
+                            }, 1000);
+                        } else {
+                            // 如果找到“我的”文字但没有找到 a 标签，说明页面结构可能变了。
+                            console.error('❌ 拦截失败：找到“我的”文字，但未找到用于跳转的 <a> 标签！页面结构可能发生了变动。');
+                            alert('拦截失败：页面结构发生变化，找不到“我的”链接。遮罩保持，请手动检查。');
+                        }
+                    } else {
+                        // 如果完全找不到“我的”按钮，则提示失败，不撤除遮罩。
+                        console.error('❌ 拦截失败：页面中找不到文字为“我的”的按钮！');
+                        alert('拦截失败：找不到“我的”按钮，为了安全起见，遮罩不撤除。请刷新页面重试。');
+                    }
+                }
+                // 【v0.8 核心新增】针对“去探索”进行配额限制
+                // 逻辑：
+                // 1. 按日期初始化配额，每天 12 条。
+                // 2. 使用 watchedIds 记录已经看过的视频 ID，避免滚动误扣。
+                // 3. 启动 exploreInterval，每 500ms 检查视频是否切换。
+                // 4. 如果切换到新视频，则扣减配额并更新计数器。
+                // 5. 配额用尽后，移除计数器并重新弹出守门员面板。
+                else if (item.text === '去探索') {
+                    // 【v0.8 修改】键名增加 0_ 前缀
+                    // 获取今天的日期字符串，作为配额刷新依据。
+                    const today = new Date().toLocaleDateString();
+
+                    // 读取探索配额数据；如果没有则初始化为空对象。
+                    let quotaData = JSON.parse(localStorage.getItem('0_gatekeeper_explore_quota') || '{}');
+
+                    // 如果存储中的日期不是今天，则重置配额。
+                    if (quotaData.date !== today) {
+                        quotaData = { date: today, remaining: 12, watchedIds: [] };
+                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                    }
+
+                    // 兼容旧数据：如果没有 watchedIds 字段，则补一个空数组。
+                    if (!quotaData.watchedIds) {
+                        quotaData.watchedIds = [];
+                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                    }
+
+                    // 如果今日配额已经小于等于 0，则拒绝进入探索。
+                    if (quotaData.remaining <= 0) {
+                        alert('今日探索配额已用完，请明天再来~');
+                        return;
+                    }
+
+                    // 更新计数器 UI，显示当前剩余配额。
+                    updateCounter(quotaData.remaining);
+
+                    // 移除遮罩。
+                    wrapper.remove();
+
+                    // 尝试播放页面中的视频。
+                    const videos = document.querySelectorAll('video');
+                    videos.forEach(video => {
+                        video.play().catch(e => {});
+                    });
+
+                    // 获取当前初始视频元素。
+                    const initialVideoEl = document.querySelector('#sliderVideo');
+
+                    // 如果存在初始视频元素。
+                    if (initialVideoEl) {
+                        // 获取视频 ID。
+                        const initialId = initialVideoEl.getAttribute('data-e2e-vid');
+
+                        // 如果 ID 存在且尚未记录，则记录到 watchedIds。
+                        if (initialId && !quotaData.watchedIds.includes(initialId)) {
+                            quotaData.watchedIds.push(initialId);
+                            localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                        }
+                    }
+
+                    // 更新 lastVideoId，作为下一次比较的基准。
+                    lastVideoId = initialVideoEl ? initialVideoEl.getAttribute('data-e2e-vid') : null;
+
+                    // 如果已有探索监听定时器，先清理。
+                    if (exploreInterval) {
+                        clearInterval(exploreInterval);
+                    }
+
+                    // 启动探索监听：每 500ms 检查当前视频是否切换。
+                    exploreInterval = setInterval(() => {
+                        // 获取当前视频元素。
+                        const currentVideoEl = document.querySelector('#sliderVideo');
+
+                        // 如果存在当前视频元素。
+                        if (currentVideoEl) {
+                            // 获取当前视频 ID。
+                            const currentId = currentVideoEl.getAttribute('data-e2e-vid');
+
+                            // 如果当前 ID 存在，并且与上一次记录的 ID 不同，说明切换了视频。
+                            if (currentId && currentId !== lastVideoId) {
+                                // 只有 lastVideoId 不为 null 时才扣减，避免初始化阶段误扣。
+                                if (lastVideoId !== null) {
+                                    // 【v0.8 修改】键名增加 0_ 前缀
+                                    // 重新读取最新配额数据，避免使用旧对象。
+                                    let freshQuota = JSON.parse(localStorage.getItem('0_gatekeeper_explore_quota'));
+
+                                    // 兼容旧数据：确保 watchedIds 存在。
+                                    if (!freshQuota.watchedIds) freshQuota.watchedIds = [];
+
+                                    // 如果当前视频 ID 尚未记录，则视为一次新探索。
+                                    if (!freshQuota.watchedIds.includes(currentId)) {
+                                        // 记录视频 ID。
+                                        freshQuota.watchedIds.push(currentId);
+
+                                        // 扣减剩余配额。
+                                        freshQuota.remaining--;
+
+                                        // 写回 localStorage。
+                                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(freshQuota));
+
+                                        // 更新计数器 UI。
+                                        updateCounter(freshQuota.remaining);
+
+                                        // 如果配额用尽。
+                                        if (freshQuota.remaining <= 0) {
+                                            // 停止探索监听。
+                                            clearInterval(exploreInterval);
+                                            exploreInterval = null;
+
+                                            // 移除计数器。
+                                            removeCounter();
+
+                                            // 重新弹出守门员面板，让用户重新选择。
+                                            initGatekeeper();
+                                        }
+                                    }
+                                }
+
+                                // 更新 lastVideoId 为当前视频 ID。
+                                lastVideoId = currentId;
+                            }
+                        }
+                    }, 500);
+                }
+                // 【v0.8 核心新增】针对“摆烂刷”进行 20 分钟倒计时 + 强制机制
+                // 逻辑：
+                // 1. 每天只能摆烂一次。
+                // 2. 点击后记录日期，启动 20 分钟倒计时。
+                // 3. 移除遮罩并允许视频播放。
+                // 4. 如果刷新页面，startGatekeeper 会根据 localStorage 恢复倒计时。
+                else if (item.text === '摆烂刷') {
+                    // 【v0.8 修改】键名增加 0_ 前缀
+                    // 获取今天日期。
+                    const today = new Date().toLocaleDateString();
+
+                    // 读取上一次摆烂日期。
+                    const lastBingeDate = localStorage.getItem('0_gatekeeper_binge_date');
+
+                    // 如果今天已经摆烂过，则拒绝。
+                    if (lastBingeDate === today) {
+                        alert('主人，今天已经摆烂过一次了哦。请选择“认真看”或“去探索”吧~');
+                        return;
+                    }
+
+                    // 【v0.8 修改】键名增加 0_ 前缀
+                    // 记录今天已经摆烂。
+                    localStorage.setItem('0_gatekeeper_binge_date', today);
+
+                    // 启动 20 分钟摆烂会话。
+                    startBingeSession(20 * 60 * 1000);
+
+                    // 移除遮罩。
+                    wrapper.remove();
+
+                    // 尝试播放页面中的视频。
+                    const videos = document.querySelectorAll('video');
+                    videos.forEach(video => {
+                        video.play().catch(e => {});
+                    });
+                }
+            };
+
+            // 将按钮加入按钮容器。
+            btnBox.appendChild(btn);
+        });
+
+        // 将标题文字加入面板。
+        panel.appendChild(text);
+
+        // 将按钮容器加入面板。
+        panel.appendChild(btnBox);
+
+        // 将遮罩容器加入面板。
+        wrapper.appendChild(panel);
+
+        // 将遮罩挂载到 body。
+        document.body.appendChild(wrapper);
+
+        // 控制台提示面板已挂载。
+        console.log('✅ 女仆面板已挂载！');
+
+        // 启动暂停定时器：每 500ms 检查所有视频，只要未暂停就强制暂停。
+        // 这样在用户做出选择前，视频不会继续播放。
+        pauseInterval = setInterval(() => {
+            // 获取页面中所有 video 元素。
+            const videos = document.querySelectorAll('video');
+
+            // 如果存在视频。
+            if (videos.length > 0) {
+                // 遍历视频并暂停。
+                videos.forEach(video => {
+                    // 如果视频没有暂停，则暂停它。
+                    if (!video.paused) {
+                        video.pause();
+                        console.log('⏸️ 成功拦截一个视频播放');
+                    }
+                });
+            }
+        }, 500);
+    }
+
+    // 功能：启动守门员。
+    // 流程：
+    // 1. 插入左上角在线标签。
+    // 2. 检查是否存在未完成的摆烂刷状态。
+    // 3. 如果用户离开超过 2 分钟，则宽恕并退还额度。
+    // 4. 如果还没结束，则恢复倒计时并直接返回，不弹面板。
+    // 5. 如果已经结束，则清理状态。
+    // 6. 最后延迟 1.5 秒初始化遮罩面板。
+    function startGatekeeper() {
+        // 插入在线标签。
+        insertTag();
+
+        // 【v0.8 新增】启动时检查摆烂刷状态
+        // 从 localStorage 读取摆烂结束时间。
+        const storedEndTime = localStorage.getItem('0_gatekeeper_binge_end_time');
+
+        // 如果存在结束时间，说明上次摆烂可能未完成。
+        if (storedEndTime) {
+            // 将结束时间转为整数时间戳。
+            const endTime = parseInt(storedEndTime, 10);
+
+            // 读取最后活跃时间，默认 0。
+            const lastActive = parseInt(localStorage.getItem('0_gatekeeper_binge_last_active') || '0', 10);
+
+            // 计算离开时长。
+            const awayDuration = Date.now() - lastActive;
+
+            // 如果离开超过 2 分钟，触发宽恕机制。
+            if (awayDuration > 2 * 60 * 1000) {
+                clearBingeSession(true);
+            }
+            // 如果当前时间还没到结束时间，则恢复摆烂会话。
+            else if (Date.now() < endTime) {
+                startBingeSession(endTime - Date.now());
+                return;
+            }
+            // 否则说明摆烂已经结束，正常清理。
+            else {
+                clearBingeSession(false);
+            }
+        }
+
+        // 延迟 1.5 秒初始化面板，等待抖音页面主要元素渲染完成。
+        setTimeout(initGatekeeper, 1500);
+    }
+
+    // 监听浏览器前进/后退事件。
+    // 当用户使用 popstate 导航时，延迟 1 秒重新弹出守门员面板。
+    window.addEventListener('popstate', () => {
+        setTimeout(initGatekeeper, 1000);
+    });
+
+    // 根据文档加载状态决定启动时机。
+    // 如果文档还在加载中，则等待 DOMContentLoaded；否则立即启动。
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startGatekeeper);
+    } else {
+        startGatekeeper();
+    }
+
+})();

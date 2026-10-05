@@ -1,0 +1,403 @@
+// ==UserScript==
+// @name         主动入口守门员 v0.8
+// @namespace    http://tampermonkey.net/
+// @version      0.8
+// @description  按钮各司其职 + 本地存储 + 探索配额限制 + 摆烂刷倒计时（宽恕+强制修复）
+// @match        *://*.douyin.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // --- 全局定时器与状态变量 ---
+    let pauseInterval = null;        // 媒体暂停轮询定时器
+    let exploreInterval = null;      // 探索模式视频切换监听器
+    let lastVideoId = null;          // 记录上一个视频的 ID
+    let bingeInterval = null;        // 摆烂刷倒计时定时器
+    let heartbeatInterval = null;    // 摆烂刷活跃状态心跳定时器
+
+    /**
+     * 注入左上角状态标签
+     */
+    function insertTag() {
+        if (document.getElementById('gatekeeper-tag')) return;
+        const tag = document.createElement('div');
+        tag.id = 'gatekeeper-tag';
+        tag.textContent = '守门员在线 (v0.8)';
+        tag.style.cssText = `
+            position: fixed; top: 0px; left: 0px;
+            z-index: 2147483647; background: rgb(0, 245, 212);
+            font-size: 18px; color: black; padding: 12px 12px;
+            border-radius: 6px; font-weight: bold; font-family: sans-serif;
+            box-shadow: rgb(0, 245, 212, 0.66) 4px 4px 10px;
+        `;
+        document.body.appendChild(tag);
+    }
+
+    /**
+     * 持久化用户操作日志
+     * @param {string} actionText - 用户的意图选择
+     */
+    function recordAction(actionText) {
+        const STORAGE_KEY = '0_gatekeeper_logs';
+        const now = new Date().toLocaleString();
+        let logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        logs.push({ action: actionText, time: now });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+        console.log(`📝 已记录：您在 ${now} 选择了 [${actionText}]`);
+        console.log('📚 当前所有的历史记录：', logs);
+    }
+
+    /**
+     * 更新探索模式配额计数器 UI
+     * @param {number} remaining - 剩余条数
+     */
+    function updateCounter(remaining) {
+        let counter = document.getElementById('gatekeeper-counter');
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.id = 'gatekeeper-counter';
+            counter.style.cssText = `
+                position: fixed; top: 0px; left: 200px;
+                z-index: 2147483646; background: #f5a623;
+                font-size: 16px; color: black; padding: 8px 12px;
+                border-radius: 6px; font-weight: bold; font-family: sans-serif;
+                box-shadow: rgba(245, 166, 35, 0.66) 4px 4px 10px;
+            `;
+            document.body.appendChild(counter);
+        }
+        counter.textContent = `探索剩余：${remaining} 条`;
+    }
+
+    /**
+     * 移除配额计数器 UI
+     */
+    function removeCounter() {
+        const counter = document.getElementById('gatekeeper-counter');
+        if (counter) counter.remove();
+    }
+
+    /**
+     * 更新摆烂刷倒计时 UI
+     * @param {number} secondsRemaining - 剩余秒数
+     */
+    function updateBingeCountdown(secondsRemaining) {
+        let countdownTag = document.getElementById('gatekeeper-binge-countdown');
+        if (!countdownTag) {
+            countdownTag = document.createElement('div');
+            countdownTag.id = 'gatekeeper-binge-countdown';
+            countdownTag.style.cssText = `
+                position: fixed; top: 0px; left: 200px;
+                z-index: 2147483646; background: #ff4d4d;
+                font-size: 16px; color: white; padding: 8px 12px;
+                border-radius: 6px; font-weight: bold; font-family: sans-serif;
+                box-shadow: rgba(255, 77, 77, 0.66) 4px 4px 10px;
+            `;
+            document.body.appendChild(countdownTag);
+        }
+        const mins = Math.floor(secondsRemaining / 60);
+        const secs = secondsRemaining % 60;
+        countdownTag.textContent = `摆烂倒计时：${mins}分${secs}秒`;
+    }
+
+    /**
+     * 移除摆烂刷倒计时 UI
+     */
+    function removeBingeCountdown() {
+        const countdownTag = document.getElementById('gatekeeper-binge-countdown');
+        if (countdownTag) countdownTag.remove();
+    }
+
+    /**
+     * 启动摆烂刷会话
+     * 负责倒计时计算、心跳维持与超时拦截
+     * @param {number} durationMs - 摆烂时长（毫秒）
+     */
+    function startBingeSession(durationMs) {
+        const endTime = Date.now() + durationMs;
+        localStorage.setItem('0_gatekeeper_binge_end_time', endTime.toString());
+        localStorage.setItem('0_gatekeeper_binge_last_active', Date.now().toString());
+
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(() => {
+            localStorage.setItem('0_gatekeeper_binge_last_active', Date.now().toString());
+        }, 5000);
+
+        if (bingeInterval) clearInterval(bingeInterval);
+        bingeInterval = setInterval(() => {
+            const remainingMs = endTime - Date.now();
+            if (remainingMs <= 0) {
+                clearInterval(bingeInterval);
+                bingeInterval = null;
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+                localStorage.removeItem('0_gatekeeper_binge_end_time');
+                localStorage.removeItem('0_gatekeeper_binge_last_active');
+                removeBingeCountdown();
+                initGatekeeper();
+            } else {
+                updateBingeCountdown(Math.floor(remainingMs / 1000));
+            }
+        }, 1000);
+    }
+
+    /**
+     * 清理摆烂刷会话
+     * @param {boolean} isForgiven - 是否为宽恕机制触发（宽恕需返还每日额度）
+     */
+    function clearBingeSession(isForgiven) {
+        if (bingeInterval) { clearInterval(bingeInterval); bingeInterval = null; }
+        if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+        localStorage.removeItem('0_gatekeeper_binge_end_time');
+        localStorage.removeItem('0_gatekeeper_binge_last_active');
+        removeBingeCountdown();
+
+        if (isForgiven) {
+            localStorage.removeItem('0_gatekeeper_binge_date');
+            console.log('🎁 宽恕触发：已退还今天的摆烂额度');
+        }
+    }
+
+    /**
+     * 初始化意图遮罩面板
+     */
+    function initGatekeeper() {
+        if (document.getElementById('gatekeeper-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'gatekeeper-wrapper';
+        wrapper.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); z-index: 2147483646;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        `;
+
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+            background: #1a1a1a; color: #00f5d4; padding: 40px;
+            border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 245, 212, 0.3);
+            text-align: center; font-family: sans-serif; max-width: 400px;
+        `;
+
+        const text = document.createElement('h2');
+        text.innerHTML = '主人，您回来啦~<br><span style="font-size:16px;color:#ccc;font-weight:normal;display:block;margin-top:10px;">今天是想认真看点东西，还是让奴家陪您探索未知？<br>或者……就摆烂一小会儿也行哦。</span>';
+
+        const btnBox = document.createElement('div');
+        btnBox.style.cssText = 'display: flex; gap: 10px; justify-content: center; margin-top: 30px;';
+
+        const buttons = [
+            { text: '认真看', color: '#00f5d4', hover: '#00d2b8' },
+            { text: '去探索', color: '#f5a623', hover: '#d18e1e' },
+            { text: '摆烂刷', color: '#ff4d4d', hover: '#cc3d3d' }
+        ];
+
+        buttons.forEach(item => {
+            const btn = document.createElement('button');
+            btn.textContent = item.text;
+            btn.style.cssText = `
+                padding: 10px 20px; border: none; border-radius: 8px;
+                background: ${item.color}; color: #000; font-weight: bold;
+                cursor: pointer; font-size: 16px; transition: 0.2s;
+            `;
+            btn.onmouseover = () => btn.style.background = item.hover;
+            btn.onmouseout = () => btn.style.background = item.color;
+
+            btn.onclick = () => {
+                console.log(`用户选择了：${item.text}`);
+                recordAction(item.text);
+
+                if (pauseInterval) {
+                    clearInterval(pauseInterval);
+                    pauseInterval = null;
+                }
+
+                // 策略一：认真看。DOM 文本匹配，模拟点击跳转至“稍后再看”
+                if (item.text === '认真看') {
+                    const mySpans = Array.from(document.querySelectorAll('span'));
+                    const myButton = mySpans.find(span => span.textContent.trim() === '我的');
+
+                    if (myButton) {
+                        const linkElement = myButton.closest('a');
+                        if (linkElement) {
+                            linkElement.click();
+                            // 延时等待，确保 SPA 页面切换完成渲染后再执行下一步操作
+                            setTimeout(() => {
+                                const watchLaterTab = document.querySelector('#semiTabwatch_later');
+                                if (watchLaterTab) {
+                                    watchLaterTab.click();
+                                }
+                                wrapper.remove();
+                                const videos = document.querySelectorAll('video');
+                                videos.forEach(video => {
+                                    video.play().catch(e => {});
+                                });
+                            }, 1000);
+                        } else {
+                            console.error('❌ 拦截失败：找到“我的”文字，但未找到用于跳转的 <a> 标签！');
+                            alert('拦截失败：页面结构发生变化，找不到“我的”链接。遮罩保持，请手动检查。');
+                        }
+                    } else {
+                        console.error('❌ 拦截失败：页面中找不到文字为“我的”的按钮！');
+                        alert('拦截失败：找不到“我的”按钮，为了安全起见，遮罩不撤除。请刷新页面重试。');
+                    }
+                }
+                // 策略二：去探索。配额检查与防误扣监听
+                else if (item.text === '去探索') {
+                    const today = new Date().toLocaleDateString();
+                    let quotaData = JSON.parse(localStorage.getItem('0_gatekeeper_explore_quota') || '{}');
+
+                    if (quotaData.date !== today) {
+                        quotaData = { date: today, remaining: 12, watchedIds: [] };
+                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                    }
+
+                    if (!quotaData.watchedIds) {
+                        quotaData.watchedIds = [];
+                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                    }
+
+                    if (quotaData.remaining <= 0) {
+                        alert('今日探索配额已用完，请明天再来~');
+                        return;
+                    }
+
+                    updateCounter(quotaData.remaining);
+
+                    wrapper.remove();
+                    const videos = document.querySelectorAll('video');
+                    videos.forEach(video => {
+                        video.play().catch(e => {});
+                    });
+
+                    const initialVideoEl = document.querySelector('#sliderVideo');
+                    if (initialVideoEl) {
+                        const initialId = initialVideoEl.getAttribute('data-e2e-vid');
+                        if (initialId && !quotaData.watchedIds.includes(initialId)) {
+                            quotaData.watchedIds.push(initialId);
+                            localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(quotaData));
+                        }
+                    }
+                    lastVideoId = initialVideoEl ? initialVideoEl.getAttribute('data-e2e-vid') : null;
+
+                    if (exploreInterval) {
+                        clearInterval(exploreInterval);
+                    }
+
+                    // 轮询监听视频 ID 变化，基于 watchedIds 去重，防止上下滚动造成误扣
+                    exploreInterval = setInterval(() => {
+                        const currentVideoEl = document.querySelector('#sliderVideo');
+                        if (currentVideoEl) {
+                            const currentId = currentVideoEl.getAttribute('data-e2e-vid');
+                            if (currentId && currentId !== lastVideoId) {
+                                if (lastVideoId !== null) {
+                                    let freshQuota = JSON.parse(localStorage.getItem('0_gatekeeper_explore_quota'));
+                                    if (!freshQuota.watchedIds) freshQuota.watchedIds = [];
+
+                                    if (!freshQuota.watchedIds.includes(currentId)) {
+                                        freshQuota.watchedIds.push(currentId);
+                                        freshQuota.remaining--;
+                                        localStorage.setItem('0_gatekeeper_explore_quota', JSON.stringify(freshQuota));
+                                        updateCounter(freshQuota.remaining);
+
+                                        if (freshQuota.remaining <= 0) {
+                                            clearInterval(exploreInterval);
+                                            exploreInterval = null;
+                                            removeCounter();
+                                            initGatekeeper();
+                                        }
+                                    }
+                                }
+                                lastVideoId = currentId;
+                            }
+                        }
+                    }, 500);
+                }
+                // 策略三：摆烂刷。每日单次限制与倒计时启动
+                else if (item.text === '摆烂刷') {
+                    const today = new Date().toLocaleDateString();
+                    const lastBingeDate = localStorage.getItem('0_gatekeeper_binge_date');
+
+                    if (lastBingeDate === today) {
+                        alert('主人，今天已经摆烂过一次了哦。请选择“认真看”或“去探索”吧~');
+                        return;
+                    }
+
+                    localStorage.setItem('0_gatekeeper_binge_date', today);
+                    startBingeSession(20 * 60 * 1000);
+
+                    wrapper.remove();
+                    const videos = document.querySelectorAll('video');
+                    videos.forEach(video => {
+                        video.play().catch(e => {});
+                    });
+                }
+            };
+
+            btnBox.appendChild(btn);
+        });
+
+        panel.appendChild(text);
+        panel.appendChild(btnBox);
+        wrapper.appendChild(panel);
+        document.body.appendChild(wrapper);
+        console.log('✅ 女仆面板已挂载！');
+
+        // 持续暂停底层媒体流，直到用户做出选择
+        pauseInterval = setInterval(() => {
+            const videos = document.querySelectorAll('video');
+            if (videos.length > 0) {
+                videos.forEach(video => {
+                    if (!video.paused) {
+                        video.pause();
+                        console.log('⏸️ 成功拦截一个视频播放');
+                    }
+                });
+            }
+        }, 500);
+    }
+
+    /**
+     * 脚本启动入口与状态恢复
+     */
+    function startGatekeeper() {
+        insertTag();
+
+        // 检查未完成的摆烂刷会话，计算离开时长
+        const storedEndTime = localStorage.getItem('0_gatekeeper_binge_end_time');
+        if (storedEndTime) {
+            const endTime = parseInt(storedEndTime, 10);
+            const lastActive = parseInt(localStorage.getItem('0_gatekeeper_binge_last_active') || '0', 10);
+            const awayDuration = Date.now() - lastActive;
+
+            // 宽恕机制：离开超过 2 分钟则中断会话并重置每日额度
+            if (awayDuration > 2 * 60 * 1000) {
+                clearBingeSession(true);
+            }
+            // 未超时则恢复会话，跳过面板弹出
+            else if (Date.now() < endTime) {
+                startBingeSession(endTime - Date.now());
+                return;
+            }
+            // 清理过期状态
+            else {
+                clearBingeSession(false);
+            }
+        }
+
+        setTimeout(initGatekeeper, 1500);
+    }
+
+    // 监听 URL 变化（SPA 路由跳转时重新触发）
+    window.addEventListener('popstate', () => {
+        setTimeout(initGatekeeper, 1000);
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startGatekeeper);
+    } else {
+        startGatekeeper();
+    }
+
+})();
