@@ -116,8 +116,15 @@
 | `fatal: destination path already exists` | clone 目标文件夹已存在 | 删除该文件夹，或 clone 到其他位置 |
 | `fatal: refusing to merge unrelated histories` | 两个仓库没有共同的提交历史 | `git pull origin main --allow-unrelated-histories` |
 
+
 ## 九、补充
-git fetch	只下载远程最新状态到本地（存到 origin/main 等远程跟踪分支）	安全，不影响你的代码
+
+|命令|做什么|安全性|
+|---|---|---|
+|git fetch|只下载远程最新状态到本地（存到 origin/main 等远程跟踪分支）|安全，不影响你的代码|
+|git pull|git fetch + git merge，下载后直接合并到你的当前分支|可能产生冲突或意外合并|
+
+- 取消提交commit：（核心原则：只要让 Git 读到一个空的提交信息，或者让编辑器非正常退出，提交就会自动取消。）Vim（Git Bash 默认最常见）：1.按 Esc 进入命令模式。2.输入 :cq 然后回车 —— 这是最明确的取消方式，Git 会直接放弃提交。3.或者输入 :q! 不保存退出，Git 发现信息为空，也会中止。
 
 
 ## 十、一句话速记
