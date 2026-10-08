@@ -116,8 +116,11 @@
 | `fatal: destination path already exists` | clone 目标文件夹已存在 | 删除该文件夹，或 clone 到其他位置 |
 | `fatal: refusing to merge unrelated histories` | 两个仓库没有共同的提交历史 | `git pull origin main --allow-unrelated-histories` |
 
+## 九、补充
+git fetch	只下载远程最新状态到本地（存到 origin/main 等远程跟踪分支）	安全，不影响你的代码
 
-## 九、一句话速记
+
+## 十、一句话速记
 
 > **配置一次 → clone 下来 → status 看状态 → add 加改动 → commit 拍快照 → pull 同步远程 → push 推上去**
 
