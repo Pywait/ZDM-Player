@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>性格特质图谱 · 200对相反特质</title>
+<style>
+:root{
+  --bg:#f4f6fb;
+  --card:#ffffff;
+  --text:#1e2233;
+  --muted:#8b93aa;
+  --line:#e8ecf6;
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:var(--text);
+  min-height:100vh;
+  background:
+    radial-gradient(1000px 520px at 6% -10%, #e8ecff 0%, transparent 60%),
+    radial-gradient(900px 460px at 100% -6%, #f4e9ff 0%, transparent 58%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ================= 顶栏 ================= */
+.topbar{
+  position:sticky; top:0; z-index:60;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 24px;
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(232,236,246,.9);
+}
+.brand{display:flex;align-items:center;gap:12px;}
+.logo{
+  width:40px;height:40px;flex:none;border-radius:13px;
+  display:grid;place-items:center;
+  background:linear-gradient(135deg,#6366f1,#a855f7);
+  color:#fff;font-size:19px;
+  box-shadow:0 6px 18px rgba(99,102,241,.36);
+}
+.brand h1{font-size:16px;letter-spacing:.4px;display:flex;align-items:center;gap:8px;}
+.ver{
+  display:inline-block;
+  font-size:10.5px;font-weight:700;
+  color:#8b5cf6;background:#f2ebff;
+  padding:2.5px 8px;border-radius:6px;
+  letter-spacing:.5px;
+  transform:translateY(-1px);
+}
+.brand p{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+.status{
+  font-size:12px;font-weight:600;color:#0f9d70;
+  background:#e9fbf4;padding:6px 13px;border-radius:999px;
+  transition:.3s;white-space:nowrap;
+}
+.status.off{color:#94a3b8;background:#f1f4fa;}
+
+/* ================= 布局 ================= */
+.layout{
+  max-width:1460px;margin:0 auto;
+  padding:22px 24px 30px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 500px;
+  gap:22px;align-items:start;
+}
+.viewer{
+  position:sticky;top:88px;
+  max-height:calc(100vh - 108px);
+  overflow-y:auto;
+  padding-right:4px;
+}
+.viewer::-webkit-scrollbar{width:6px;}
+.viewer::-webkit-scrollbar-thumb{background:#d9dfee;border-radius:3px;}
+.viewer::-webkit-scrollbar-track{background:transparent;}
+
+@media (max-width:1180px){
+  .layout{grid-template-columns:1fr;padding:16px 16px 30px;}
+  .viewer{position:static;max-height:none;overflow:visible;}
+}
+
+/* ================= 卡片 ================= */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:16px 18px;
+  box-shadow:0 6px 26px rgba(31,35,51,.05);
+  margin-bottom:16px;
+}
+
+/* ================= 档案区 ================= */
+.profile{display:flex;flex-direction:column;gap:13px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field > span{font-size:11.5px;font-weight:700;letter-spacing:.6px;color:var(--muted);}
+.field input{
+  width:100%;padding:11px 14px;border-radius:12px;
+  border:1.5px solid #e6eaf5;background:#fafbff;
+  font-size:15px;color:inherit;font-family:inherit;
+  outline:none;transition:.2s;
+}
+.field input:focus{
+  border-color:#a5b4fc;background:#fff;
+  box-shadow:0 0 0 4px rgba(99,102,241,.12);
+}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1.5px solid #e6eaf5;background:#fff;
+  padding:9px 14px;border-radius:11px;
+  font-size:13px;font-weight:600;color:#414a63;
+  font-family:inherit;cursor:pointer;transition:.18s;
+}
+.btn:hover{border-color:#c7d0ea;transform:translateY(-1px);box-shadow:0 5px 14px rgba(31,35,51,.08);}
+.btn:active{transform:translateY(0);}
+.btn.primary{
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  color:#fff;border-color:transparent;
+  box-shadow:0 6px 16px rgba(99,102,241,.3);
+}
+.btn.primary:hover{box-shadow:0 9px 24px rgba(99,102,241,.4);}
+.btn.ghost{color:#9aa2b8;}
+.btn.danger{color:#dc2626;border-color:#fecaca;background:#fef2f2;}
+.btn.danger:hover{border-color:#fca5a5;background:#fee2e2;}
+.counter{
+  margin-left:auto;font-size:12px;font-weight:700;color:#6b7390;
+  background:#f2f5fd;padding:7px 12px;border-radius:999px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+
+/* ================= 分类 ================= */
+.cat{border-top:1px solid #f1f3fa;}
+.cat:first-child{border-top:none;}
+
+.cat-head{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 6px;border-radius:11px;
+  cursor:pointer;user-select:none;transition:background .18s;
+}
+.cat-head:hover{background:#fafbff;}
+.cat-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--c);}
+.cat-head h2{font-size:14px;font-weight:800;letter-spacing:.2px;}
+.cat-count{
+  font-size:10.5px;color:#a7aec3;background:#f4f6fc;
+  padding:2px 7px;border-radius:6px;
+}
+.cat-score{
+  margin-left:auto;font-size:14.5px;font-weight:800;
+  color:var(--c);font-variant-numeric:tabular-nums;
+}
+.chev{color:#b9c0d4;font-size:11px;transition:transform .25s;}
+.cat.open .chev{transform:rotate(180deg);}
+
+.cat-body{display:none;padding:2px 6px 16px;}
+.cat.open .cat-body{display:block;}
+
+/* ================= 子分组 ================= */
+.grp{margin-bottom:14px;}
+.grp:last-child{margin-bottom:0;}
+.grp-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:7px;padding-left:2px;
+}
+.grp-head > span:first-child{
+  font-size:12px;font-weight:800;color:#5b6480;letter-spacing:.3px;
+}
+.grp-score{
+  font-size:11.5px;font-weight:800;color:var(--c);
+  background:color-mix(in srgb, var(--c) 10%, #fff);
+  padding:2px 9px;border-radius:999px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ================= 五级选择对 ================= */
+.pairs{display:flex;flex-direction:column;gap:4px;}
+
+.pair{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  padding:1px 0;
+}
+.pair .lbl{
+  font-size:11.5px;
+  color:#6b7390;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+  transition:color .15s;
+}
+.pair .lbl.L{text-align:right;}
+.pair .lbl.R{text-align:left;}
+
+/* 选中时高亮对应标签 */
+.pair[data-side="L"] .lbl.L{color:var(--c);font-weight:700;}
+.pair[data-side="R"] .lbl.R{color:var(--c);font-weight:700;}
+
+.opts{
+  display:flex;
+  gap:2px;
+  padding:3px;
+  background:#f5f7fd;
+  border-radius:10px;
+  border:1px solid #eaeef9;
+}
+.opt{
+  width:28px;
+  height:22px;
+  border:none;
+  background:transparent;
+  border-radius:7px;
+  font-size:10px;
+  color:#a7aec3;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  padding:0;
+  transition:.15s;
+  font-family:inherit;
+  line-height:1;
+  -webkit-tap-highlight-color:transparent;
+}
+.opt:hover{background:#e8ecf8;color:#414a63;}
+.opt:active{transform:scale(.95);}
+.opt.on{
+  background:var(--c);
+  color:#fff;
+  box-shadow:0 3px 8px -2px var(--c);
+}
+.opt.on:hover{background:var(--c);color:#fff;}
+
+@media (max-width:480px){
+  .opt{width:24px;height:20px;font-size:9px;}
+  .pair .lbl{font-size:11px;}
+  .opts{padding:2px;gap:1px;}
+}
+
+/* ================= 雷达图区 ================= */
+.v-name{
+  text-align:center;font-size:15.5px;font-weight:800;
+  color:#2c3247;margin-bottom:14px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.v-name small{
+  display:block;font-size:11px;font-weight:500;
+  color:#a7aec3;margin-top:4px;letter-spacing:.4px;
+}
+.radar-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+@media (max-width:520px){ .radar-grid{grid-template-columns:1fr;} }
+
+.radar-card{
+  background:#fbfcff;
+  border:1px solid #eef1f9;
+  border-radius:13px;
+  padding:8px 8px 4px;
+}
+.rc-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;margin-bottom:2px;padding:0 2px;
+}
+.rc-name{
+  font-size:11px;font-weight:800;color:#4b5470;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rc-score{
+  font-size:12px;font-weight:800;
+  font-variant-numeric:tabular-nums;flex:none;
+}
+.rc-canvas{position:relative;width:100%;padding-top:100%;}
+.rc-canvas canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+/* ================= 底部说明区 ================= */
+.page-footer{
+  max-width:1460px;
+  margin:0 auto;
+  padding:8px 24px 70px;
+  text-align:center;
+}
+.footer-inner{
+  max-width:760px;
+  margin:0 auto;
+  background:rgba(255,255,255,.6);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:20px 26px;
+  box-shadow:0 4px 18px rgba(31,35,51,.04);
+}
+.footer-inner .ft-title{
+  font-size:12.5px;font-weight:800;color:#5b6480;
+  letter-spacing:.6px;margin-bottom:10px;
+}
+.footer-inner p{
+  font-size:12.5px;
+  color:#8b93aa;
+  line-height:2;
+  text-align:center;
+}
+.footer-inner p b{color:#5b6480;font-weight:700;}
+.footer-inner p em{
+  font-style:normal;
+  color:#6366f1;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.footer-ver{
+  margin-top:14px;
+  font-size:11px;
+  color:#b3bac9;
+  letter-spacing:.6px;
+}
+
+/* ================= Toast 提示 ================= */
+.toast-wrap{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+  z-index:200;pointer-events:none;
+  display:flex;flex-direction:column;gap:8px;align-items:center;
+}
+.toast{
+  min-width:180px;max-width:min(440px,calc(100vw - 40px));
+  padding:12px 20px;
+  border-radius:12px;
+  background:rgba(30,34,51,.94);
+  color:#fff;
+  font-size:13.5px;font-weight:600;
+  box-shadow:0 12px 36px rgba(30,34,51,.28);
+  backdrop-filter:blur(8px);
+  display:flex;align-items:center;gap:9px;
+  opacity:0;transform:translateY(16px) scale(.96);
+  transition:opacity .28s cubic-bezier(.4,0,.2,1),
+             transform .28s cubic-bezier(.4,0,.2,1);
+  pointer-events:auto;
+}
+.toast.show{opacity:1;transform:translateY(0) scale(1);}
+.toast .ic{
+  width:20px;height:20px;border-radius:50%;flex:none;
+  display:grid;place-items:center;
+  font-size:12px;font-weight:800;
+  background:rgba(255,255,255,.18);
+}
+.toast.success{background:rgba(16,185,129,.96);}
+.toast.success .ic{background:rgba(255,255,255,.24);}
+.toast.error{background:rgba(239,68,68,.96);}
+.toast.error .ic{background:rgba(255,255,255,.24);}
+.toast.info{background:rgba(99,102,241,.96);}
+.toast.info .ic{background:rgba(255,255,255,.24);}
+
+/* ================= 确认弹窗 ================= */
+.modal-mask{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(20,24,40,.46);
+  backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+  opacity:0;transition:opacity .22s;
+}
+.modal-mask.show{display:flex;opacity:1;}
+.modal{
+  width:min(400px,100%);
+  background:#fff;border-radius:20px;
+  padding:26px 26px 20px;
+  box-shadow:0 30px 80px rgba(20,24,40,.3);
+  transform:translateY(12px) scale(.97);
+  transition:transform .24s cubic-bezier(.4,0,.2,1);
+}
+.modal-mask.show .modal{transform:translateY(0) scale(1);}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:10px;color:#1e2233;}
+.modal p{font-size:13.5px;line-height:1.7;color:#6b7390;margin-bottom:22px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+.modal-actions .btn{padding:10px 18px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">◎</div>
+    <div>
+      <h1>性格特质图谱<span class="ver">v1.0</span></h1>
+      <p>200 对相反特质 · 6 大分类雷达图</p>
+    </div>
+  </div>
+  <span class="status" id="saveStatus">本地存储就绪</span>
+</header>
+
+<main class="layout">
+  <!-- ============ 左：编辑区 ============ -->
+  <section class="editor">
+    <div class="card profile">
+      <label class="field">
+        <span>姓名 / 昵称</span>
+        <input id="nameInput" type="text" maxlength="24" placeholder="请输入姓名或昵称…" autocomplete="off">
+      </label>
+      <div class="toolbar">
+        <button class="btn" id="btnExport">📤 导出档案</button>
+        <button class="btn" id="btnImport">📥 导入档案</button>
+        <button class="btn danger" id="btnReset">↺ 清空重置</button>
+        <input type="file" id="fileInput" accept="application/json,.json" hidden>
+        <span class="counter" id="counter">已选 0 / 200</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar" style="margin-bottom:6px;">
+        <span style="font-size:12.5px;font-weight:700;color:#5b6480;">
+          每对特质 5 个选项：◀◀ 左端 · ◀ 偏左 · ● 中间/不确定 · ▶ 偏右 · ▶▶ 右端
+        </span>
+        <button class="btn ghost" id="btnExpandAll" style="margin-left:auto;padding:6px 11px;font-size:12px;">全部展开</button>
+        <button class="btn ghost" id="btnCollapseAll" style="padding:6px 11px;font-size:12px;">全部收起</button>
+      </div>
+      <div id="catList"></div>
+    </div>
+  </section>
+
+  <!-- ============ 右：雷达图展示 ============ -->
+  <aside class="viewer">
+    <div class="card">
+      <div class="v-name" id="radarName">未命名<small>请输入姓名</small></div>
+      <div class="radar-grid" id="radarGrid"></div>
+    </div>
+  </aside>
+</main>
+
+<!-- ============ 底部说明（居中） ============ -->
+<footer class="page-footer">
+  <div class="footer-inner">
+    <div class="ft-title">使用说明 · 图表解读</div>
+    <p>
+      <b>· 五级选择：</b>每对相反特质提供 <em>5</em> 个选项 ——
+      <em>◀◀</em> 完全偏向左端、<em>◀</em> 比较偏向左端、<em>●</em> 中间/不确定、<em>▶</em> 比较偏向右端、<em>▶▶</em> 完全偏向右端。
+      点击已选项可取消。
+    </p>
+    <p>
+      <b>· 分类雷达图：</b>六大分类各一张雷达图，同类特质在图中靠得更近。
+      每条轴代表一个子分组，取值 <em>0–100</em>：越靠外越偏向左端特质，越靠内越偏向右端特质。
+    </p>
+    <p>
+      <b>· 计分规则：</b>每对选择的对应分值为
+      <em>◀◀=100</em>、<em>◀=75</em>、<em>●=50</em>、<em>▶=25</em>、<em>▶▶=0</em>；
+      子分组得分取组内均值，分类得分按各对数量加权。
+    </p>
+    <p>
+      <b>· 数据保存：</b>编辑后自动保存到浏览器本地，可随时导出为 JSON 文件，也可导入此前导出的档案继续填写或对比。
+    </p>
+    <div class="footer-ver">性格特质图谱 · v1.0</div>
+  </div>
+</footer>
+
+<!-- ============ Toast 容器 ============ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ============ 确认弹窗 ============ -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3 id="modalTitle">确认操作</h3>
+    <p id="modalText">确定要执行此操作吗？</p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modalCancel">取消</button>
+      <button class="btn danger" id="modalConfirm">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   1. 数据：6 大分类 → 子分组 → 200 对相反特质
+   ===================================================================== */
+const CATEGORIES = [
+  {
+    key:'social', name:'社交互动', color:'#6366f1',
+    groups:[
+      { name:'外向活力', pairs:[['外向','内向'],['健谈','寡言'],['主动','被动'],['开朗','抑郁'],['合群好动','安静独处']] },
+      { name:'社交亲和', pairs:[['合群','孤僻'],['热情','冷漠'],['亲和','疏离'],['友好','敌对'],['平易近人','高高在上']] },
+      { name:'表达风格', pairs:[['大方','害羞'],['风趣','乏味'],['幽默','刻板'],['坦率','含蓄'],['直言不讳','拐弯抹角']] },
+      { name:'合作随和', pairs:[['合作','竞争'],['顺从','叛逆'],['宽容','苛刻'],['随和','执拗'],['圆融','耿直']] },
+      { name:'处世成熟', pairs:[['世故','天真'],['谦逊','傲慢'],['低调','张扬'],['有礼貌','粗鲁']] },
+      { name:'利他亲社会', pairs:[['慷慨','吝啬'],['利他','利己'],['体贴','冷酷'],['善解人意','不近人情'],['热心助人','袖手旁观'],['有同情心','无动于衷']] },
+      { name:'信任坦诚', pairs:[['信任他人','多疑'],['真诚','虚伪'],['坦荡','城府深'],['表里如一','口是心非'],['乐于分享','独享独占']] },
+      { name:'开放变通', pairs:[['善变通','守旧'],['开放包容','封闭排外'],['善于倾听','好为人师'],['有亲和力','令人疏远'],['善交际','不善交际']] }
+    ]
+  },
+  {
+    key:'emotion', name:'情绪情感', color:'#ec4899',
+    groups:[
+      { name:'乐观心态', pairs:[['乐观','悲观'],['积极','消极'],['开朗豁达','郁郁寡欢'],['昂扬向上','消沉低落']] },
+      { name:'情绪稳定', pairs:[['情绪稳定','情绪波动大'],['平和','暴躁'],['沉稳','浮躁'],['情绪自控力强','情绪自控力弱'],['心态平和','患得患失']] },
+      { name:'冷静从容', pairs:[['冷静','冲动'],['耐心','急躁'],['从容','焦虑'],['淡定','慌张']] },
+      { name:'心理韧性', pairs:[['坚韧','脆弱'],['抗压能力强','抗压能力弱'],['内心强大','内心脆弱'],['容易释怀','耿耿于怀']] },
+      { name:'情感表达', pairs:[['感情外露','感情内敛'],['多愁善感','铁石心肠'],['容易感动','难以打动'],['情感丰富','情感贫乏'],['喜形于色','不动声色'],['热情洋溢','冷淡漠然']] },
+      { name:'温暖活力', pairs:[['温暖','冷淡'],['富有激情','麻木'],['愉快','烦闷'],['笑口常开','愁眉苦脸'],['精神饱满','萎靡不振']] },
+      { name:'自信知足', pairs:[['自信','自卑'],['自尊','自轻'],['知足','贪婪'],['感恩','抱怨'],['满足','不满']] },
+      { name:'宽容豁达', pairs:[['宽恕','记仇'],['大度','小气']] }
+    ]
+  },
+  {
+    key:'cognition', name:'认知与思维', color:'#0ea5e9',
+    groups:[
+      { name:'理性逻辑', pairs:[['理性','感性'],['深思熟虑','轻率鲁莽'],['有逻辑','无条理'],['善于分析','凭直觉'],['务实','空想']] },
+      { name:'创造想象', pairs:[['有创造力','因循守旧'],['有想象力','缺乏想象'],['想象丰富','想象贫乏'],['好奇心强','对事物无兴趣'],['思维活跃','思维迟钝']] },
+      { name:'开放变通', pairs:[['开放思维','思维僵化'],['善于变通','固执己见'],['灵活','死板'],['善于总结','不善反思']] },
+      { name:'敏锐洞察', pairs:[['敏锐','迟钝'],['反应迅速','反应迟缓'],['善于观察','视而不见'],['悟性高','领悟力弱'],['有洞察力','肤浅'],['机敏','迟钝木讷']] },
+      { name:'远见判断', pairs:[['有远见','目光短浅'],['有远见卓识','只顾眼前'],['判断力强','判断力弱'],['有谋略','莽撞'],['有主见','随波逐流']] },
+      { name:'独立思考', pairs:[['独立思考','人云亦云'],['批判性思维','盲从']] },
+      { name:'学习求知', pairs:[['博学','无知'],['专注','分心'],['记忆力好','健忘'],['学习能力强','学习能力弱'],['求知欲强','安于现状']] },
+      { name:'智慧细节', pairs:[['智慧','愚钝'],['注重细节','粗枝大叶'],['前瞻','保守']] }
+    ]
+  },
+  {
+    key:'will', name:'意志与行动', color:'#f59e0b',
+    groups:[
+      { name:'果断魄力', pairs:[['果断','优柔寡断'],['坚决','犹豫'],['有魄力','畏缩不前'],['雷厉风行','拖泥带水'],['勇敢','怯懦'],['无畏','胆小怕事'],['敢于冒险','畏首畏尾']] },
+      { name:'坚持韧性', pairs:[['有毅力','半途而废'],['坚持不懈','轻易放弃'],['有韧性','容易气馁'],['能吃苦','拈轻怕重']] },
+      { name:'自律严谨', pairs:[['自律','放纵'],['有自制力','缺乏自制力'],['严谨','马虎'],['认真','敷衍'],['一丝不苟','粗制滥造'],['精益求精','得过且过']] },
+      { name:'勤奋进取', pairs:[['勤奋','懒惰'],['刻苦','贪图安逸'],['进取','安于现状'],['有野心','无欲无求']] },
+      { name:'执行规划', pairs:[['有执行力','拖延'],['有规划','漫无目的'],['有条理','杂乱无章'],['有条不紊','手忙脚乱'],['高效','低效']] },
+      { name:'责任守信', pairs:[['勇于担当','推卸责任'],['有责任感','缺乏责任感'],['可靠','不可靠'],['守时','迟到'],['守信','失信']] },
+      { name:'独立目标', pairs:[['自立自强','依赖他人'],['独立','依赖'],['目标明确','缺乏方向'],['行动力强','光说不做']] }
+    ]
+  },
+  {
+    key:'value', name:'态度与价值观', color:'#10b981',
+    groups:[
+      { name:'诚实正直', pairs:[['诚实','撒谎'],['正直','奸诈'],['有原则','无底线'],['坚持真理','随声附和'],['务实求真','弄虚作假'],['实事求是','夸大其词']] },
+      { name:'善良仁厚', pairs:[['善良','恶毒'],['仁厚','残暴'],['慈悲','冷酷']] },
+      { name:'公平正义', pairs:[['公平','偏私'],['公正','偏袒'],['正义感强','是非不分'],['维护正义','明哲保身'],['敢于直言','阿谀奉承']] },
+      { name:'忠诚敬业', pairs:[['忠诚','背叛'],['负责','敷衍塞责'],['敬业','玩忽职守'],['勤勉','懈怠']] },
+      { name:'谦逊淡泊', pairs:[['谦恭','自大'],['虚心','自负'],['淡泊名利','追名逐利'],['节俭','奢侈'],['朴素','浮华']] },
+      { name:'公德奉献', pairs:[['有公德心','自私自利'],['有奉献精神','斤斤计较'],['集体主义','个人主义'],['乐于奉献','只求索取'],['有牺牲精神','自私自利']] },
+      { name:'尊重修养', pairs:[['尊重他人','目中无人'],['平等待人','势利'],['有教养','粗俗'],['有品位','低级趣味']] },
+      { name:'理想追求', pairs:[['追求卓越','甘于平庸'],['理想主义','功利主义'],['有信念','无信仰']] }
+    ]
+  },
+  {
+    key:'self', name:'自我认知与成长', color:'#8b5cf6',
+    groups:[
+      { name:'自我认知', pairs:[['自我认知清晰','自我认知模糊'],['有自知之明','不自量力'],['自省','不知反省'],['谦卑','自负']] },
+      { name:'自尊自信', pairs:[['自尊自爱','自暴自弃'],['自我接纳','自我否定'],['自信满满','缺乏自信']] },
+      { name:'学习成长', pairs:[['善于学习','固步自封'],['勇于改变','抗拒改变'],['追求成长','停滞不前'],['有上进心','不思进取']] },
+      { name:'心态弹性', pairs:[['心态开放','心态封闭'],['心理弹性强','心理弹性弱'],['适应力强','适应力差'],['善于调整','僵化不变']] },
+      { name:'目标驱动', pairs:[['有目标感','迷茫'],['有使命感','无方向感'],['自我驱动','被动等待'],['内心笃定','内心摇摆'],['乐观向上','悲观消沉']] }
+    ]
+  }
+];
+
+/* ---- 生成稳定 ID ---- */
+CATEGORIES.forEach(c => {
+  c.groups.forEach((g, gi) => {
+    g.pairs = g.pairs.map((p, pi) => ({
+      id: c.key + '-' + gi + '-' + pi,
+      L: p[0],
+      R: p[1]
+    }));
+  });
+});
+const TOTAL_PAIRS = CATEGORIES.reduce(
+  (s, c) => s + c.groups.reduce((a, g) => a + g.pairs.length, 0), 0
+); // 200
+
+/* =====================================================================
+   2. 状态
+   ===================================================================== */
+const STORAGE_KEY = 'personality-radar-v2';   // 沿用旧 key，便于自动迁移
+const state = { name: '', choices: {} };      // choices[id] = 2 | 1 | 0 | -1 | -2
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+function hexA(hex, a){
+  const h = hex.replace('#','');
+  return 'rgba(' + parseInt(h.slice(0,2),16) + ',' +
+                  parseInt(h.slice(2,4),16) + ',' +
+                  parseInt(h.slice(4,6),16) + ',' + a + ')';
+}
+
+/* 分值映射：v ∈ {-2,-1,0,1,2} → 0~100 */
+function choiceScore(v){
+  if(typeof v !== 'number') return 50;
+  return (v + 2) * 25;
+}
+
+/* 旧数据（'L'/'R'）迁移到数字 */
+function migrateChoice(v){
+  if(v === 'L') return 2;
+  if(v === 'R') return -2;
+  if(typeof v === 'number' && (v === 2 || v === 1 || v === 0 || v === -1 || v === -2)) return v;
+  if(typeof v === 'string' && v !== ''){
+    const n = Number(v);
+    if(n === 2 || n === 1 || n === 0 || n === -1 || n === -2) return n;
+  }
+  return undefined;
+}
+
+function groupScore(g){
+  let sum = 0;
+  g.pairs.forEach(p => { sum += choiceScore(state.choices[p.id]); });
+  return sum / g.pairs.length;
+}
+
+/* =====================================================================
+   3. Toast 提示系统
+   ===================================================================== */
+const toastWrap = document.getElementById('toastWrap');
+let toastSeq = 0;
+
+function showToast(message, type){
+  type = type || 'info';
+  const id = ++toastSeq;
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.dataset.id = id;
+
+  const iconText = type === 'success' ? '✓'
+                 : type === 'error' ? '!' : 'i';
+  el.innerHTML = '<span class="ic">' + iconText + '</span><span>' + escapeHtml(message) + '</span>';
+  toastWrap.appendChild(el);
+
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 320);
+  }, 2600);
+}
+
+/* =====================================================================
+   4. 自定义确认弹窗
+   ===================================================================== */
+const modalMask   = document.getElementById('modalMask');
+const modalTitle  = document.getElementById('modalTitle');
+const modalText   = document.getElementById('modalText');
+const modalCancel = document.getElementById('modalCancel');
+const modalConfirm= document.getElementById('modalConfirm');
+
+function openConfirm(title, text, onConfirm){
+  modalTitle.textContent = title;
+  modalText.textContent  = text;
+  modalMask.classList.add('show');
+
+  const close = () => {
+    modalMask.classList.remove('show');
+    modalCancel.removeEventListener('click', onCancel);
+    modalConfirm.removeEventListener('click', onOk);
+    modalMask.removeEventListener('click', onMask);
+  };
+  const onCancel = () => { close(); };
+  const onOk = () => { close(); onConfirm(); };
+  const onMask = e => { if(e.target === modalMask) close(); };
+
+  modalCancel.addEventListener('click', onCancel);
+  modalConfirm.addEventListener('click', onOk);
+  modalMask.addEventListener('click', onMask);
+}
+
+/* =====================================================================
+   5. 本地存储
+   ===================================================================== */
+function defaultState(){
+  state.name = '';
+  state.choices = {};
+}
+function save(silent){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      app: 'personality-radar',
+      version: 3,
+      name: state.name,
+      choices: state.choices,
+      updatedAt: new Date().toISOString()
+    }));
+    if(!silent){
+      const t = new Date();
+      const p = n => String(n).padStart(2,'0');
+      setStatus('已保存 ' + p(t.getHours()) + ':' + p(t.getMinutes()) + ':' + p(t.getSeconds()));
+    }
+  }catch(err){
+    setStatus('保存失败（存储不可用）', true);
+  }
+}
+let saveTimer = null;
+function scheduleSave(){
+  setStatus('编辑中…', true);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => save(false), 600);
+}
+function setStatus(text, off){
+  const el = document.getElementById('saveStatus');
+  el.textContent = text;
+  el.classList.toggle('off', !!off);
+}
+function load(){
+  defaultState();
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    if(!d || typeof d !== 'object') return;
+    if(typeof d.name === 'string') state.name = d.name;
+    if(d.choices && typeof d.choices === 'object'){
+      Object.keys(d.choices).forEach(k => {
+        const v = migrateChoice(d.choices[k]);
+        if(typeof v === 'number') state.choices[k] = v;
+      });
+    }
+  }catch(err){ console.warn('读取本地数据失败：', err); }
+}
+
+/* =====================================================================
+   6. 渲染编辑区
+   ===================================================================== */
+function buildEditor(){
+  const wrap = document.getElementById('catList');
+  wrap.innerHTML = CATEGORIES.map((c, ci) => {
+    const total = c.groups.reduce((s,g) => s + g.pairs.length, 0);
+    const groupsHtml = c.groups.map((g, gi) => `
+      <div class="grp">
+        <div class="grp-head">
+          <span>${escapeHtml(g.name)}</span>
+          <span class="grp-score" data-gs="${ci}-${gi}">50</span>
+        </div>
+        <div class="pairs">
+          ${g.pairs.map(p => `
+            <div class="pair" data-id="${p.id}">
+              <span class="lbl L" title="${escapeHtml(p.L)}">${escapeHtml(p.L)}</span>
+              <div class="opts">
+                <button class="opt" data-id="${p.id}" data-v="2"  title="完全偏向左端：${escapeHtml(p.L)}">◀◀</button>
+                <button class="opt" data-id="${p.id}" data-v="1"  title="比较偏向左端：${escapeHtml(p.L)}">◀</button>
+                <button class="opt" data-id="${p.id}" data-v="0"  title="中间 / 不确定 / 两者之间">●</button>
+                <button class="opt" data-id="${p.id}" data-v="-1" title="比较偏向右端：${escapeHtml(p.R)}">▶</button>
+                <button class="opt" data-id="${p.id}" data-v="-2" title="完全偏向右端：${escapeHtml(p.R)}">▶▶</button>
+              </div>
+              <span class="lbl R" title="${escapeHtml(p.R)}">${escapeHtml(p.R)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <section class="cat${ci === 0 ? ' open' : ''}" data-ci="${ci}" style="--c:${c.color}">
+        <header class="cat-head">
+          <span class="cat-dot"></span>
+          <h2>${escapeHtml(c.name)}</h2>
+          <span class="cat-count">${total} 对</span>
+          <span class="cat-score" data-cs="${ci}">50</span>
+          <span class="chev">▾</span>
+        </header>
+        <div class="cat-body">${groupsHtml}</div>
+      </section>
+    `;
+  }).join('');
+}
+
+/* 更新单对按钮 / 标签高亮 */
+function updatePairUI(id){
+  const chosen = state.choices[id];
+  const pairEl = document.querySelector('.pair[data-id="' + id + '"]');
+  if(!pairEl) return;
+
+  pairEl.querySelectorAll('.opt').forEach(b => {
+    const v = Number(b.dataset.v);
+    b.classList.toggle('on', chosen !== undefined && v === chosen);
+  });
+
+  if(chosen === undefined) pairEl.removeAttribute('data-side');
+  else if(chosen > 0) pairEl.dataset.side = 'L';
+  else if(chosen < 0) pairEl.dataset.side = 'R';
+  else pairEl.removeAttribute('data-side');
+}
+
+function syncChoiceUI(){
+  document.querySelectorAll('.pair').forEach(p => updatePairUI(p.dataset.id));
+}
+
+/* =====================================================================
+   7. 雷达图
+   ===================================================================== */
+function buildRadarDOM(){
+  const grid = document.getElementById('radarGrid');
+  grid.innerHTML = CATEGORIES.map((c, ci) => `
+    <div class="radar-card">
+      <div class="rc-head">
+        <span class="rc-name">${escapeHtml(c.name)}</span>
+        <span class="rc-score" data-rc="${ci}" style="color:${c.color}">50</span>
+      </div>
+      <div class="rc-canvas"><canvas data-canvas="${ci}"></canvas></div>
+    </div>
+  `).join('');
+}
+
+function drawRadar(canvas, labels, values, color){
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  if(W < 20 || H < 20) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const n = labels.length;
+  const R = Math.min(W, H) / 2 - 26;
+  if(R <= 4) return;
+  const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+
+  for(let k = 1; k <= 4; k++){
+    const r = R * k / 4;
+    ctx.beginPath();
+    for(let i = 0; i < n; i++){
+      const a = ang(i);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = k === 4 ? '#dde3f1' : '#eff2fa';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#eff2fa';
+  ctx.lineWidth = 1;
+  for(let i = 0; i < n; i++){
+    const a = ang(i);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.stroke();
+  }
+
+  const pts = values.map((v, i) => {
+    const a = ang(i);
+    const r = R * Math.max(0.03, Math.min(1, v / 100));
+    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
+  });
+
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+  grad.addColorStop(0, hexA(color, 0.36));
+  grad.addColorStop(1, hexA(color, 0.14));
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  pts.forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.7;
+    ctx.stroke();
+  });
+
+  const fs = n > 6 ? 8.5 : 9.5;
+  ctx.font = '700 ' + fs + 'px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#6b7390';
+
+  for(let i = 0; i < n; i++){
+    const a = ang(i);
+    const cosv = Math.cos(a), sinv = Math.sin(a);
+    const lx = cx + cosv * (R + 12);
+    const ly = cy + sinv * (R + 12);
+    if(Math.abs(cosv) < 0.25) ctx.textAlign = 'center';
+    else ctx.textAlign = cosv > 0 ? 'left' : 'right';
+    ctx.fillText(labels[i], lx, ly);
+  }
+}
+
+function updateRadars(){
+  CATEGORIES.forEach((c, ci) => {
+    const canvas = document.querySelector('canvas[data-canvas="' + ci + '"]');
+    if(!canvas) return;
+
+    const labels = c.groups.map(g => g.name);
+    const values = c.groups.map(g => groupScore(g));
+
+    drawRadar(canvas, labels, values, c.color);
+
+    const sEl = document.querySelector('[data-rc="' + ci + '"]');
+    if(sEl){
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      sEl.textContent = Math.round(avg);
+    }
+  });
+}
+
+/* =====================================================================
+   8. 统一刷新
+   ===================================================================== */
+let rafId = null;
+function scheduleRefresh(){
+  if(rafId) return;
+  rafId = requestAnimationFrame(() => { rafId = null; refresh(); });
+}
+
+function refresh(){
+  CATEGORIES.forEach((c, ci) => {
+    let wSum = 0, wN = 0;
+
+    c.groups.forEach((g, gi) => {
+      const s = groupScore(g);
+      wSum += s * g.pairs.length;
+      wN   += g.pairs.length;
+
+      const el = document.querySelector('[data-gs="' + ci + '-' + gi + '"]');
+      if(el) el.textContent = Math.round(s);
+    });
+
+    const avg = wN ? wSum / wN : 50;
+    const ce = document.querySelector('[data-cs="' + ci + '"]');
+    if(ce) ce.textContent = Math.round(avg);
+  });
+
+  updateRadars();
+
+  const chosen = Object.keys(state.choices).length;
+  document.getElementById('counter').textContent = '已选 ' + chosen + ' / ' + TOTAL_PAIRS;
+
+  const nEl = document.getElementById('radarName');
+  const nm = state.name.trim();
+  nEl.innerHTML = nm
+    ? escapeHtml(nm) + '<small>性格特质档案 · ' + TOTAL_PAIRS + ' 对特质</small>'
+    : '未命名<small>请输入姓名</small>';
+}
+
+/* =====================================================================
+   9. 导出 / 导入 / 重置
+   ===================================================================== */
+function exportData(){
+  const nm = state.name.trim() || '未命名';
+  const chosen = Object.keys(state.choices).length;
+
+  const data = {
+    app: 'personality-radar',
+    version: 3,
+    name: state.name,
+    choices: state.choices,
+    exportedAt: new Date().toISOString()
+  };
+
+  const filename = nm + '-性格图谱.json';
+
+  try{
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+
+    if(window.navigator && window.navigator.msSaveBlob){
+      window.navigator.msSaveBlob(blob, filename);
+      showToast('已导出：' + filename, 'success');
+      setStatus('已导出文件');
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      if(a.parentNode) a.parentNode.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 120);
+
+    showToast('已导出：' + filename + '（' + chosen + ' 项选择）', 'success');
+    setStatus('已导出文件');
+  }catch(err){
+    showToast('导出失败：' + err.message, 'error');
+    setStatus('导出失败', true);
+  }
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const d = JSON.parse(reader.result);
+      if(!d || typeof d !== 'object') throw new Error('文件结构不正确');
+
+      defaultState();
+      if(typeof d.name === 'string') state.name = d.name;
+      if(d.choices && typeof d.choices === 'object'){
+        Object.keys(d.choices).forEach(k => {
+          const v = migrateChoice(d.choices[k]);
+          if(typeof v === 'number') state.choices[k] = v;
+        });
+      }
+
+      document.getElementById('nameInput').value = state.name;
+      syncChoiceUI();
+      refresh();
+      save(true);
+
+      const newCount = Object.keys(state.choices).length;
+      showToast('导入成功：' + (state.name.trim() || '未命名') + '（' + newCount + ' 项选择）', 'success');
+      setStatus('导入成功');
+    }catch(err){
+      showToast('导入失败：' + err.message, 'error');
+      setStatus('导入失败', true);
+    }
+  };
+  reader.onerror = () => { showToast('读取文件失败', 'error'); };
+  reader.readAsText(file, 'utf-8');
+}
+
+function resetAll(){
+  defaultState();
+  document.getElementById('nameInput').value = '';
+  syncChoiceUI();
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(err){}
+  refresh();
+  showToast('已清空所有选择与姓名', 'success');
+  setStatus('已重置');
+}
+
+/* =====================================================================
+   10. 事件绑定
+   ===================================================================== */
+function bindEvents(){
+  const catList = document.getElementById('catList');
+
+  catList.addEventListener('click', e => {
+    const btn = e.target.closest('.opt');
+    if(btn){
+      const id = btn.dataset.id;
+      const v  = Number(btn.dataset.v);
+
+      if(state.choices[id] === v) delete state.choices[id];
+      else state.choices[id] = v;
+
+      updatePairUI(id);
+      scheduleRefresh();
+      scheduleSave();
+      return;
+    }
+    const head = e.target.closest('.cat-head');
+    if(head) head.parentElement.classList.toggle('open');
+  });
+
+  const nameInput = document.getElementById('nameInput');
+  nameInput.addEventListener('input', () => {
+    state.name = nameInput.value;
+    const nEl = document.getElementById('radarName');
+    nEl.innerHTML = state.name.trim()
+      ? escapeHtml(state.name.trim()) + '<small>性格特质档案 · ' + TOTAL_PAIRS + ' 对特质</small>'
+      : '未命名<small>请输入姓名</small>';
+    scheduleSave();
+  });
+
+  document.getElementById('btnExpandAll').addEventListener('click', () => {
+    document.querySelectorAll('.cat').forEach(s => s.classList.add('open'));
+  });
+  document.getElementById('btnCollapseAll').addEventListener('click', () => {
+    document.querySelectorAll('.cat').forEach(s => s.classList.remove('open'));
+  });
+
+  document.getElementById('btnExport').addEventListener('click', exportData);
+
+  const fileInput = document.getElementById('fileInput');
+  document.getElementById('btnImport').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if(f) importData(f);
+    e.target.value = '';
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    openConfirm(
+      '清空所有选择？',
+      '将删除当前姓名与全部 ' + TOTAL_PAIRS + ' 对特质的选择，并清除本地保存。此操作不可撤销。',
+      resetAll
+    );
+  });
+
+  let rzTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(updateRadars, 160);
+  });
+}
+
+/* =====================================================================
+   11. 启动
+   ===================================================================== */
+(function init(){
+  load();
+  buildEditor();
+  buildRadarDOM();
+  document.getElementById('nameInput').value = state.name;
+  syncChoiceUI();
+  bindEvents();
+
+  requestAnimationFrame(() => {
+    refresh();
+    if(Object.keys(state.choices).length){
+      setStatus('已载入本地档案');
+      setTimeout(() => setStatus('已自动保存'), 2200);
+    }
+  });
+})();
+</script>
+</body>
+</html>
